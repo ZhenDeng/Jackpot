@@ -11,9 +11,59 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .base import PlayerForm, TeamForm, MatchContext, MatchData, MatchDataProvider
+
+# A realistic default so Understat doesn't reject the request on UA alone. When
+# using a Cloudflare cookie this MUST be overridden with the exact browser UA that
+# obtained the cookie (Cloudflare binds the clearance to the User-Agent).
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+
+
+def parse_cf_clearance(raw: str) -> str:
+    """Extract the ``cf_clearance`` token from a cookie string or bare value.
+
+    Accepts either a full ``document.cookie`` string (``a=1; cf_clearance=...; b=2``)
+    or just the token value. Raises ValueError if a named cookie string has no
+    ``cf_clearance``.
+    """
+    raw = (raw or "").strip()
+    if not raw:
+        raise ValueError("empty cookie value")
+    if "cf_clearance" in raw:
+        for part in raw.split(";"):
+            key, _, value = part.partition("=")
+            if key.strip() == "cf_clearance":
+                token = value.strip()
+                if not token:
+                    raise ValueError("cf_clearance present but empty")
+                return token
+        raise ValueError("cf_clearance not found in cookie string")
+    # No cf_clearance substring. Distinguish a bare token (which may carry trailing
+    # '=' base64 padding, e.g. "tok==") from a name=value cookie string: a cookie
+    # string has a ';' separator or an '=' that isn't just trailing padding.
+    if ";" in raw or "=" in raw.rstrip("="):
+        raise ValueError("no cf_clearance in cookie string")
+    return raw  # bare token value (padding preserved)
+
+
+def build_request_kwargs(
+    cf_clearance: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> Dict[str, object]:
+    """Build the ``headers``/``cookies`` kwargs for the Understat request."""
+    cookies: Dict[str, str] = {}
+    if cf_clearance:
+        cookies["cf_clearance"] = parse_cf_clearance(cf_clearance)
+    return {
+        "headers": {"User-Agent": user_agent or DEFAULT_USER_AGENT},
+        "cookies": cookies,
+    }
+
 
 # our league label -> Understat's URL code
 _LEAGUE_CODES: Dict[str, str] = {
@@ -139,10 +189,26 @@ def parse_players_data(html: str) -> Dict[str, List[PlayerForm]]:
 class UnderstatProvider(MatchDataProvider):
     """Fetches live league xG from Understat and caches it per (league, season)."""
 
-    def __init__(self, season: int = 2024):
+    def __init__(
+        self,
+        season: int = 2024,
+        cf_clearance: Optional[str] = None,
+        user_agent: Optional[str] = None,
+    ):
         self.season = season
+        self.cf_clearance = cf_clearance
+        self.user_agent = user_agent
         self._cache: Dict[str, Dict[str, Dict[str, float]]] = {}
         self._squads: Dict[str, Dict[str, List[PlayerForm]]] = {}
+
+    def __repr__(self) -> str:
+        # never echo the cookie credential in logs / tracebacks
+        has_cookie = "yes" if self.cf_clearance else "no"
+        return f"UnderstatProvider(season={self.season}, cf_clearance={has_cookie})"
+
+    def _request_kwargs(self) -> Dict[str, object]:
+        """Headers + cookies sent with each Understat request (incl. CF cookie)."""
+        return build_request_kwargs(self.cf_clearance, self.user_agent)
 
     def _load_league(self, league: str) -> Dict[str, Dict[str, float]]:
         if league in self._cache:
@@ -151,7 +217,7 @@ class UnderstatProvider(MatchDataProvider):
 
         code = understat_league_code(league)
         url = f"https://understat.com/league/{code}/{self.season}"
-        resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        resp = requests.get(url, timeout=15, **self._request_kwargs())
         resp.raise_for_status()
         parsed = parse_teams_data(resp.text)
         try:

@@ -85,17 +85,44 @@ with st.sidebar:
             league_avg=league_avg, home_squad=home_squad, away_squad=away_squad,
         )
     else:
-        provider = get_provider(source)
+        cf_cookie = ""  # defined for the team-fetch guard below (Sample path too)
         if source.startswith("Sample"):
+            provider = get_provider(source)
             leagues = provider.list_leagues()
         else:
+            # Understat is Cloudflare-gated: let the user paste a cf_clearance
+            # cookie + matching User-Agent from their browser (see README).
+            st.caption(
+                "Understat needs a Cloudflare cookie. Open understat.com → DevTools "
+                "→ Application → Cookies → copy the `cf_clearance` value, and your "
+                "User-Agent (Console: `navigator.userAgent`). See the README."
+            )
+            cf_cookie = st.text_input("Cloudflare cookie (cf_clearance)", type="password")
+            # UA is not secret (it's the public browser string), but it must match
+            # the browser that obtained the cookie — Cloudflare binds them together.
+            cf_ua = st.text_input("User-Agent (must match the browser)")
+            provider = UnderstatProvider(
+                cf_clearance=cf_cookie or None,
+                user_agent=cf_ua or None,
+            )
             leagues = ["EPL", "La Liga", "Serie A", "Bundesliga", "Ligue 1"]
         league = st.selectbox("League", leagues)
-        try:
-            teams = provider.list_teams(league)
-        except Exception as e:  # pragma: no cover - UI guard
-            st.error(f"Could not load teams: {e}")
+
+        # Don't hit the network for the team list in live mode until a cookie is
+        # supplied — without it the fetch is guaranteed to fail (Cloudflare).
+        live_no_cookie = not source.startswith("Sample") and not cf_cookie
+        if live_no_cookie:
+            st.info("Paste your Cloudflare cookie above to load live teams.")
             teams = []
+        else:
+            try:
+                teams = provider.list_teams(league)
+            except Exception as e:  # pragma: no cover - UI guard
+                st.error(
+                    f"Could not load teams: {e}. Live Understat is Cloudflare-gated — "
+                    "the cookie may have expired; use Manual entry as a fallback."
+                )
+                teams = []
         home = st.selectbox("Home team", teams, index=0 if teams else None)
         away = st.selectbox("Away team", teams, index=1 if len(teams) > 1 else None)
 
