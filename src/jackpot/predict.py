@@ -8,15 +8,41 @@ from __future__ import annotations
 
 from typing import Dict, Optional, Sequence
 
-from .data.base import MatchData
+from typing import List
+
+from .data.base import MatchData, TeamForm
 from .strength import TeamRates, estimate_strength
 from .lambdas import compute_lambdas
 from .matrix import build_score_matrix
 from . import markets as mk
+from . import players as pl
 from .odds import fair_odds, strip_overround, blend, is_value, confidence_level
 
 DEFAULT_OU_LINES = (1.5, 2.5, 3.5)
 VALUE_THRESHOLD = 0.05
+DEFAULT_PLAYER_PROPS_TOP_N = 8
+
+
+def _player_props(team: TeamForm, team_lambda: float, top_n: int) -> List[dict]:
+    """Anytime/2+ goalscorer props for a team, or [] when no squad is available."""
+    if not team.squad:
+        return []
+    entries = [
+        (p.name, pl.raw_output(p.xg_per90, p.expected_minutes), p.penalty_taker)
+        for p in team.squad
+    ]
+    lambdas = pl.allocate_lambdas(entries, team_lambda)
+    props = [
+        {
+            "player": name,
+            "p_score": pl.p_score(lam),
+            "p_2plus": pl.p_two_plus(lam),
+            "fair_odds": fair_odds(pl.p_score(lam)),
+        }
+        for name, lam in lambdas.items()
+    ]
+    props.sort(key=lambda e: e["p_score"], reverse=True)
+    return props[:top_n]
 
 
 def _rates(form) -> TeamRates:
@@ -42,6 +68,7 @@ def predict(
     over_under_lines: Sequence[float] = DEFAULT_OU_LINES,
     blend_weight: float = 1.0,
     correct_score_top_n: int = 6,
+    player_props_top_n: int = DEFAULT_PLAYER_PROPS_TOP_N,
 ) -> Dict[str, object]:
     """Produce the full prediction Tab for a match.
 
@@ -106,6 +133,11 @@ def predict(
     draw_no_bet = {k: _outcome(v, None) for k, v in raw_dnb.items()}
     correct_score = mk.correct_score(matrix, correct_score_top_n)
 
+    player_props = {
+        "home": _player_props(match.home, lam_home, player_props_top_n),
+        "away": _player_props(match.away, lam_away, player_props_top_n),
+    }
+
     # 7. honest confidence from the thinner of the two samples
     min_matches = min(match.home.matches, match.away.matches)
     has_xg = match.home.uses_xg and match.away.uses_xg
@@ -124,5 +156,6 @@ def predict(
             "correct_score": correct_score,
             "double_chance": double_chance,
             "draw_no_bet": draw_no_bet,
+            "player_props": player_props,
         },
     }
