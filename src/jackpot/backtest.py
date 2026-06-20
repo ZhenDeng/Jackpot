@@ -13,11 +13,12 @@ from dataclasses import dataclass
 from typing import Dict, List, Sequence, Tuple
 
 from .data.base import TeamForm, MatchContext, MatchData
-from .data.results import HistoricalMatch, load_results_csv, sample_season
+from .data.results import HistoricalMatch, load_results_csv, sample_season, normalize_date
 from .metrics import log_loss, brier_score, ranked_probability_score
 from .predict import predict
 
 _N_BUCKETS = 5  # calibration reliability buckets over [0, 1]
+_DEFAULT_LEAGUE_AVG = 1.3  # prior used until the league has produced some goals
 
 
 @dataclass
@@ -48,13 +49,15 @@ def _calibration(records: List[Tuple[List[float], int]]) -> List[dict]:
     buckets = []
     for b in range(_N_BUCKETS):
         lo, hi = b / _N_BUCKETS, (b + 1) / _N_BUCKETS
-        chosen = [
-            (probs[0], oi) for probs, oi in records
-            if (lo <= probs[0] < hi) or (b == _N_BUCKETS - 1 and probs[0] == 1.0)
-        ]
+        last = b == _N_BUCKETS - 1
+        chosen = []
+        for probs, oi in records:
+            p = min(1.0, max(0.0, probs[0]))  # clamp guards float overshoot
+            if (lo <= p < hi) or (last and p == hi):
+                chosen.append((p, oi))
         n = len(chosen)
-        mean_pred = sum(p for p, _ in chosen) / n if n else 0.0
-        actual = sum(1 for _, oi in chosen if oi == 0) / n if n else 0.0
+        mean_pred = (sum(p for p, _ in chosen) / n) if n else None
+        actual = (sum(1 for _, oi in chosen if oi == 0) / n) if n else None
         buckets.append(
             {"lo": lo, "hi": hi, "n": n, "mean_pred": mean_pred, "actual_freq": actual}
         )
@@ -76,12 +79,17 @@ def run_backtest(
     league_games = 0
     records: List[Tuple[List[float], int]] = []
 
-    for m in matches:
+    # enforce chronological order regardless of input ordering (walk-forward)
+    ordered = sorted(matches, key=lambda mt: normalize_date(mt.date))
+
+    for m in ordered:
         h_hist = history.get(m.home, [])
         a_hist = history.get(m.away, [])
-        league_avg = league_goals / (league_games * 2) if league_games else 0.0
+        # fall back to a prior until the league has actually produced goals,
+        # so a goalless opening round doesn't silently suppress predictions
+        league_avg = (league_goals / (league_games * 2)) if league_goals else _DEFAULT_LEAGUE_AVG
 
-        if len(h_hist) >= min_history and len(a_hist) >= min_history and league_avg > 0:
+        if len(h_hist) >= min_history and len(a_hist) >= min_history:
             home = TeamForm(m.home, _mean(h_hist, 0), _mean(h_hist, 1), len(h_hist), False)
             away = TeamForm(m.away, _mean(a_hist, 0), _mean(a_hist, 1), len(a_hist), False)
             md = MatchData(home, away, MatchContext(league_avg_goals=league_avg))
@@ -123,7 +131,11 @@ def tune(
 
 # --- CLI report ---------------------------------------------------------------
 
-_TUNE_GRID = {"home_adv": [1.1, 1.2, 1.3, 1.4], "rho": [-0.1, -0.05, 0.0]}
+_TUNE_GRID = {
+    "home_adv": [1.1, 1.2, 1.3, 1.4],
+    "rho": [-0.1, -0.05, 0.0],
+    "shrink_k": [3.0, 5.0, 8.0],
+}
 
 
 def format_report(result: BacktestResult, label: str = "Backtest") -> str:
@@ -137,13 +149,13 @@ def format_report(result: BacktestResult, label: str = "Backtest") -> str:
         f"accuracy (top) : {result.accuracy:.1%}",
         "",
         "calibration (home-win prob vs actual):",
-        f"  {'bucket':<12}{'n':>5}{'pred':>9}{'actual':>9}",
+        f"  {'bucket':<10}{'n':>5}{'pred':>9}{'actual':>9}",
     ]
     for b in result.calibration:
-        lines.append(
-            f"  {b['lo']:.1f}-{b['hi']:.1f}      {b['n']:>5}"
-            f"{b['mean_pred']:>9.2f}{b['actual_freq']:>9.2f}"
-        )
+        bucket = f"{b['lo']:.1f}-{b['hi']:.1f}"
+        pred = "    —" if b["mean_pred"] is None else f"{b['mean_pred']:>9.2f}"
+        actual = "    —" if b["actual_freq"] is None else f"{b['actual_freq']:>9.2f}"
+        lines.append(f"  {bucket:<10}{b['n']:>5}{pred}{actual}")
     return "\n".join(lines)
 
 

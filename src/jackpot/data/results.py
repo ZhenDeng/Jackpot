@@ -6,9 +6,25 @@ CSVs; the bundled sample season keeps the harness runnable offline and in tests.
 from __future__ import annotations
 
 import csv
+import datetime
 import io
 from dataclasses import dataclass
 from typing import List
+
+
+def normalize_date(s: str) -> str:
+    """Return a sortable ISO date string, accepting dd/mm/yyyy or ISO input.
+
+    Unrecognised formats are returned unchanged (so sorting degrades gracefully
+    rather than raising).
+    """
+    s = (s or "").strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d/%m/%y"):
+        try:
+            return datetime.datetime.strptime(s, fmt).date().isoformat()
+        except ValueError:
+            continue
+    return s
 
 
 @dataclass
@@ -30,17 +46,20 @@ def load_results_csv(text: str) -> List[HistoricalMatch]:
     out: List[HistoricalMatch] = []
     for row in csv.DictReader(io.StringIO(text)):
         try:
+            home, away = row["HomeTeam"].strip(), row["AwayTeam"].strip()
+            if not home or not away:
+                continue  # phantom-team guard
             out.append(
                 HistoricalMatch(
-                    date=row.get("Date", ""),
+                    date=normalize_date(row.get("Date", "")),
                     league=row.get("Div", ""),
-                    home=row["HomeTeam"],
-                    away=row["AwayTeam"],
+                    home=home,
+                    away=away,
                     home_goals=int(row["FTHG"]),
                     away_goals=int(row["FTAG"]),
                 )
             )
-        except (KeyError, ValueError, TypeError):
+        except (KeyError, ValueError, TypeError, AttributeError):
             continue
     return out
 
@@ -63,7 +82,8 @@ def sample_season(rounds: int = 2) -> List[HistoricalMatch]:
     """
     teams = list(_SAMPLE_STRENGTH)
     matches: List[HistoricalMatch] = []
-    day = 1
+    start = datetime.date(2025, 8, 1)
+    day = 0
     for _ in range(rounds):
         for i, home in enumerate(teams):
             for j, away in enumerate(teams):
@@ -73,7 +93,7 @@ def sample_season(rounds: int = 2) -> List[HistoricalMatch]:
                 ag = _score(_SAMPLE_STRENGTH[away], _SAMPLE_STRENGTH[home], 0.0)
                 matches.append(
                     HistoricalMatch(
-                        date=f"2025-08-{day:02d}",
+                        date=(start + datetime.timedelta(days=day)).isoformat(),
                         league="SAMPLE",
                         home=home,
                         away=away,
