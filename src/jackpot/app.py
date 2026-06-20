@@ -109,7 +109,9 @@ if go:
     c3.metric("Confidence", out["confidence"])
 
     m = out["markets"]
-    tabs = st.tabs(["1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance", "Draw No Bet"])
+    tabs = st.tabs(
+        ["1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance", "Draw No Bet", "Goalscorers"]
+    )
 
     with tabs[0]:
         _row(f"{home} win", m["match_result"]["home"])
@@ -138,6 +140,24 @@ if go:
     with tabs[5]:
         _row(f"{home} (DNB)", m["draw_no_bet"]["home"])
         _row(f"{away} (DNB)", m["draw_no_bet"]["away"])
+
+    with tabs[6]:
+        st.caption("Anytime goalscorer — probability a player scores at least once.")
+        pp = m["player_props"]
+        gc1, gc2 = st.columns(2)
+        for col, side, team_name in ((gc1, "home", home), (gc2, "away", away)):
+            with col:
+                st.markdown(f"**{team_name}**")
+                entries = pp[side]
+                if not entries:
+                    st.caption("No squad data for this team.")
+                    continue
+                for e in entries:
+                    two = f"  ·  2+: {_pct(e['p_2plus'])}" if e["p_2plus"] > 0.01 else ""
+                    st.write(
+                        f"{e['player']} — {_pct(e['p_score'])}  "
+                        f"(odds {_odds(e['fair_odds'])}){two}"
+                    )
 
     st.caption(
         "Predictions are probability estimates, not guarantees. Single matches are "

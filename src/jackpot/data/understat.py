@@ -13,7 +13,7 @@ import json
 import re
 from typing import Dict, List
 
-from .base import TeamForm, MatchContext, MatchData, MatchDataProvider
+from .base import PlayerForm, TeamForm, MatchContext, MatchData, MatchDataProvider
 
 # our league label -> Understat's URL code
 _LEAGUE_CODES: Dict[str, str] = {
@@ -25,6 +25,8 @@ _LEAGUE_CODES: Dict[str, str] = {
 }
 
 _TEAMS_DATA_RE = re.compile(r"teamsData\s*=\s*JSON\.parse\('(?P<json>.*?)'\)", re.DOTALL)
+_PLAYERS_DATA_RE = re.compile(r"playersData\s*=\s*JSON\.parse\('(?P<json>.*?)'\)", re.DOTALL)
+_SQUAD_SIZE = 8
 
 
 def understat_league_code(league: str) -> str:
@@ -92,12 +94,46 @@ def parse_teams_data(html: str) -> Dict[str, Dict[str, float]]:
     return out
 
 
+def parse_players_data(html: str) -> Dict[str, List[PlayerForm]]:
+    """Extract per-team squads (xG/90, avg minutes) from Understat ``playersData``.
+
+    Returns ``{team_title: [PlayerForm, ...]}`` sorted by xG/90 descending, keeping
+    the top scorers. Penalty taker isn't in this feed, so it defaults to False.
+    """
+    match = _PLAYERS_DATA_RE.search(html)
+    if not match:
+        raise ValueError("playersData payload not found in Understat HTML")
+    players = json.loads(_unescape_understat(match.group("json")))
+
+    squads: Dict[str, List[PlayerForm]] = {}
+    for p in players:
+        minutes = float(p.get("time", 0) or 0)
+        if minutes <= 0:
+            continue
+        games = float(p.get("games", 0) or 0) or 1.0
+        xg = float(p.get("xG", 0) or 0)
+        squads.setdefault(p["team_title"], []).append(
+            PlayerForm(
+                name=p["player_name"],
+                xg_per90=xg / (minutes / 90.0),
+                expected_minutes=min(90.0, minutes / games),
+                penalty_taker=False,
+            )
+        )
+
+    for team in squads:
+        squads[team].sort(key=lambda pf: pf.xg_per90, reverse=True)
+        squads[team] = squads[team][:_SQUAD_SIZE]
+    return squads
+
+
 class UnderstatProvider(MatchDataProvider):
     """Fetches live league xG from Understat and caches it per (league, season)."""
 
     def __init__(self, season: int = 2024):
         self.season = season
         self._cache: Dict[str, Dict[str, Dict[str, float]]] = {}
+        self._squads: Dict[str, Dict[str, List[PlayerForm]]] = {}
 
     def _load_league(self, league: str) -> Dict[str, Dict[str, float]]:
         if league in self._cache:
@@ -109,6 +145,10 @@ class UnderstatProvider(MatchDataProvider):
         resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         resp.raise_for_status()
         parsed = parse_teams_data(resp.text)
+        try:
+            self._squads[league] = parse_players_data(resp.text)
+        except (ValueError, KeyError):
+            self._squads[league] = {}  # squads are optional; props degrade gracefully
         self._cache[league] = parsed
         return parsed
 
@@ -123,6 +163,7 @@ class UnderstatProvider(MatchDataProvider):
             raise KeyError(f"team not found in {league}: {away_team}")
 
         league_avg = compute_league_avg(teams)
+        squads = self._squads.get(league, {})
 
         def form(name: str) -> TeamForm:
             row = teams[name]
@@ -132,6 +173,7 @@ class UnderstatProvider(MatchDataProvider):
                 conceded_per_game=row["conceded_per_game"],
                 matches=int(row["matches"]),
                 uses_xg=True,
+                squad=squads.get(name),
             )
 
         return MatchData(
