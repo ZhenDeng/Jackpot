@@ -59,13 +59,33 @@ and two teams, optionally enter bookmaker odds to enable value flags, then
 The prediction engine is pure standard library (no NumPy/SciPy), so the test
 suite is deterministic and fast.
 
+## Backtesting & calibration
+
+Measure whether the model is actually any good — and tune its weights — by
+replaying history with a strict **walk-forward** (each prediction sees only prior
+matches, never its own or future results):
+
+```bash
+# runs the bundled sample season
+PYTHONPATH=src .venv/bin/python -m jackpot.backtest
+
+# or a real football-data.co.uk results CSV (Date,HomeTeam,AwayTeam,FTHG,FTAG)
+PYTHONPATH=src .venv/bin/python -m jackpot.backtest path/to/E0.csv
+```
+
+Reports proper scoring rules — **RPS** (the right metric for ordered 1X2; ~0.222
+is coin-flip), log-loss, Brier — plus top-pick accuracy and a calibration table
+(predicted vs actual home-win frequency). It then grid-searches `home_adv` / `rho`
+and prints the best-tuned weights. Download real CSVs from football-data.co.uk.
+
 ## Layout
 
 ```
 src/jackpot/
   poisson.py    matrix.py    markets.py    odds.py      # engine
   strength.py   lambdas.py   players.py   predict.py    # model + orchestration
-  data/         base · sample · understat · weather     # swappable data layer
+  metrics.py    backtest.py                             # evaluation + tuning
+  data/         base · sample · understat · weather · results · manual
   app.py        # Streamlit UI (st.tabs per market)
 tests/          # pytest
 docs/specs/     # design spec + tasks
@@ -77,12 +97,14 @@ docs/specs/     # design spec + tasks
 - Team props: **corners / cards** — needs FBref data (corner data absent from
   Understat; cards need referee data). Separate scraping phase.
 - World Cup national-team variant (Elo + FBref national xG)
-- Backtesting/calibration harness (RPS, log-loss, walk-forward)
+- Live data revival (headless browser, since Understat is now Cloudflare-gated)
 
 Done:
 - **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
 - **Team props** (team total goals, clean sheet, win to nil, winning margin), all
   derived exactly from the score matrix — `docs/specs/2026-06-20-team-props-design.md`
+- **Backtesting & calibration harness** (walk-forward, RPS/log-loss/Brier,
+  calibration, weight tuning) — `docs/specs/2026-06-20-backtest-harness-design.md`
 
 ## Disclaimer
 
