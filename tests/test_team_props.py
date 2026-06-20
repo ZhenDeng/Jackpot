@@ -17,7 +17,7 @@ def _m():
 def test_team_total_goals_complements_to_one_per_team():
     tt = team_total_goals(_m(), 1.5)
     for side in ("home", "away"):
-        assert math.isclose(tt[side]["over"] + tt[side]["under"], 1.0, abs_tol=1e-9)
+        assert math.isclose(tt[side]["over"] + tt[side]["under"], 1.0, abs_tol=1e-12)
 
 
 def test_team_total_over_05_equals_one_minus_p_zero():

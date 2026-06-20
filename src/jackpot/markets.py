@@ -82,8 +82,10 @@ def team_total_goals(m: Matrix, line: float) -> Dict[str, Dict[str, float]]:
     away_pmf = _away_goals_pmf(m)
 
     def ou(pmf: List[float]) -> Dict[str, float]:
+        # direct sums on both sides avoid inheriting marginal-sum rounding error
         over = sum(p for k, p in enumerate(pmf) if k > line)
-        return {"over": over, "under": sum(pmf) - over}
+        under = sum(p for k, p in enumerate(pmf) if k <= line)
+        return {"over": over, "under": under}
 
     return {"home": ou(home_pmf), "away": ou(away_pmf)}
 

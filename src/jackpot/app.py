@@ -161,25 +161,26 @@ if go:
                     )
 
     with tabs[7]:
-        tp = m
         st.markdown("**Team Total Goals**")
-        for line, sides in tp["team_total_goals"].items():
+        for line, sides in m["team_total_goals"].items():
             _row(f"{home} Over {line}", sides["home"]["over"])
+            _row(f"{home} Under {line}", sides["home"]["under"])
             _row(f"{away} Over {line}", sides["away"]["over"])
+            _row(f"{away} Under {line}", sides["away"]["under"])
             st.divider()
         st.markdown("**Clean Sheet**")
-        _row(f"{home}", tp["clean_sheet"]["home"])
-        _row(f"{away}", tp["clean_sheet"]["away"])
+        _row(f"{home}", m["clean_sheet"]["home"])
+        _row(f"{away}", m["clean_sheet"]["away"])
         st.markdown("**Win to Nil**")
-        _row(f"{home}", tp["win_to_nil"]["home"])
-        _row(f"{away}", tp["win_to_nil"]["away"])
+        _row(f"{home}", m["win_to_nil"]["home"])
+        _row(f"{away}", m["win_to_nil"]["away"])
         st.markdown("**Winning Margin**")
         labels = {
             "home_2plus": f"{home} by 2+", "home_1": f"{home} by 1", "draw": "Draw",
             "away_1": f"{away} by 1", "away_2plus": f"{away} by 2+",
         }
         for key, label in labels.items():
-            _row(label, tp["winning_margin"][key])
+            _row(label, m["winning_margin"][key])
         st.caption("Corners & cards are out of scope on the free data stack (no corner data; cards need referee data).")
 
     st.caption(
