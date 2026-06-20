@@ -85,6 +85,7 @@ with st.sidebar:
             league_avg=league_avg, home_squad=home_squad, away_squad=away_squad,
         )
     else:
+        cf_cookie = ""  # defined for the team-fetch guard below (Sample path too)
         if source.startswith("Sample"):
             provider = get_provider(source)
             leagues = provider.list_leagues()
@@ -92,11 +93,13 @@ with st.sidebar:
             # Understat is Cloudflare-gated: let the user paste a cf_clearance
             # cookie + matching User-Agent from their browser (see README).
             st.caption(
-                "Understat needs a Cloudflare cookie. Open understat.com in your "
-                "browser → DevTools → Cookies → copy `cf_clearance`, and your "
-                "User-Agent (`navigator.userAgent`). See the README."
+                "Understat needs a Cloudflare cookie. Open understat.com → DevTools "
+                "→ Application → Cookies → copy the `cf_clearance` value, and your "
+                "User-Agent (Console: `navigator.userAgent`). See the README."
             )
             cf_cookie = st.text_input("Cloudflare cookie (cf_clearance)", type="password")
+            # UA is not secret (it's the public browser string), but it must match
+            # the browser that obtained the cookie — Cloudflare binds them together.
             cf_ua = st.text_input("User-Agent (must match the browser)")
             provider = UnderstatProvider(
                 cf_clearance=cf_cookie or None,

@@ -23,9 +23,28 @@ def test_strips_whitespace():
     assert parse_cf_clearance("  cf_clearance = token123 ; x=1 ") == "token123"
 
 
+def test_bare_token_with_base64_padding_passes_through():
+    # cf_clearance values are base64url and often end with '=' padding
+    assert parse_cf_clearance("AbC123.xyz-_9q8w==") == "AbC123.xyz-_9q8w=="
+
+
+def test_full_cookie_with_padded_value():
+    assert parse_cf_clearance("x=1; cf_clearance=TOK.en==; y=2") == "TOK.en=="
+
+
 def test_raises_when_no_clearance_in_named_cookie_string():
     with pytest.raises(ValueError):
         parse_cf_clearance("foo=1; bar=2")
+
+
+def test_raises_on_single_non_clearance_cookie():
+    with pytest.raises(ValueError):
+        parse_cf_clearance("session=abc123")
+
+
+def test_repr_masks_the_cookie_credential():
+    p = UnderstatProvider(cf_clearance="supersecrettoken")
+    assert "supersecrettoken" not in repr(p)
 
 
 def test_raises_on_empty():
