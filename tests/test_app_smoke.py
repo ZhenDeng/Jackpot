@@ -62,6 +62,20 @@ def test_app_renders_goalscorer_props():
     assert "Anytime goalscorer" in captions
 
 
+def test_app_renders_team_props():
+    at = _fresh()
+    at.selectbox[1].set_value("Manchester City")
+    at.selectbox[2].set_value("Burnley")
+    at.run()
+    at.button[0].click().run()
+    assert not at.exception
+    body = " ".join(m.value for m in at.markdown)
+    assert "Team Total Goals" in body
+    assert "Clean Sheet" in body
+    assert "Win to Nil" in body
+    assert "Winning Margin" in body
+
+
 def test_app_warns_on_same_team_both_sides():
     at = _fresh()
     # force both sides to the same team -> warning

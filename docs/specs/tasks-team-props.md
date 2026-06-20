@@ -4,10 +4,10 @@ Source of truth for this phase. Check a box only when implemented AND tests pass
 
 ## Build
 
-- [ ] M1  `markets.py` — team_total_goals, clean_sheet, win_to_nil, winning_margin (TDD)
-- [ ] M2  `predict.py` — add the four team-prop markets to output (TDD)
-- [ ] M3  `app.py` — Team Props tab + AppTest smoke (TDD)
-- [ ] M4  Docs: README team-props note + roadmap update; full suite green
+- [x] M1  `markets.py` — team_total_goals, clean_sheet, win_to_nil, winning_margin (TDD)
+- [x] M2  `predict.py` — add the four team-prop markets to output (TDD)
+- [x] M3  `app.py` — Team Props tab + AppTest smoke (TDD)
+- [x] M4  Docs: README team-props note + roadmap update; full suite green
 
 ## Done criteria
 - All boxes checked

@@ -65,6 +65,65 @@ def double_chance(m: Matrix) -> Dict[str, float]:
     }
 
 
+def _home_goals_pmf(m: Matrix) -> List[float]:
+    """P(home scores k) for each k (row sums)."""
+    return [sum(row) for row in m]
+
+
+def _away_goals_pmf(m: Matrix) -> List[float]:
+    """P(away scores k) for each k (column sums)."""
+    n = _size(m)
+    return [sum(m[h][a] for h in range(n)) for a in range(n)]
+
+
+def team_total_goals(m: Matrix, line: float) -> Dict[str, Dict[str, float]]:
+    """Over/Under total goals for each team individually."""
+    home_pmf = _home_goals_pmf(m)
+    away_pmf = _away_goals_pmf(m)
+
+    def ou(pmf: List[float]) -> Dict[str, float]:
+        over = sum(p for k, p in enumerate(pmf) if k > line)
+        return {"over": over, "under": sum(pmf) - over}
+
+    return {"home": ou(home_pmf), "away": ou(away_pmf)}
+
+
+def clean_sheet(m: Matrix) -> Dict[str, float]:
+    """Each team keeps a clean sheet (the opponent fails to score)."""
+    n = _size(m)
+    home = sum(m[h][0] for h in range(n))   # away scores 0
+    away = sum(m[0][a] for a in range(n))   # home scores 0
+    return {"home": home, "away": away}
+
+
+def win_to_nil(m: Matrix) -> Dict[str, float]:
+    """Each team wins without conceding."""
+    n = _size(m)
+    home = sum(m[h][0] for h in range(1, n))   # home>=1, away=0
+    away = sum(m[0][a] for a in range(1, n))   # away>=1, home=0
+    return {"home": home, "away": away}
+
+
+def winning_margin(m: Matrix) -> Dict[str, float]:
+    """Margin buckets: home by 2+, home by 1, draw, away by 1, away by 2+."""
+    n = _size(m)
+    buckets = {"home_2plus": 0.0, "home_1": 0.0, "draw": 0.0, "away_1": 0.0, "away_2plus": 0.0}
+    for h in range(n):
+        for a in range(n):
+            diff = h - a
+            if diff >= 2:
+                buckets["home_2plus"] += m[h][a]
+            elif diff == 1:
+                buckets["home_1"] += m[h][a]
+            elif diff == 0:
+                buckets["draw"] += m[h][a]
+            elif diff == -1:
+                buckets["away_1"] += m[h][a]
+            else:
+                buckets["away_2plus"] += m[h][a]
+    return buckets
+
+
 def draw_no_bet(m: Matrix) -> Dict[str, float]:
     """Draw No Bet — stake refunded on a draw, so renormalise excluding it."""
     r = match_result(m)
