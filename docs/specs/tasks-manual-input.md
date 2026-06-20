@@ -4,10 +4,10 @@ Source of truth for this phase. Check a box only when implemented AND tests pass
 
 ## Build
 
-- [ ] N1  `data/manual.py` — `build_manual_match(...)` builder + validation (TDD)
-- [ ] N2  `app.py` — "Manual entry" data source: number inputs + optional players table
-- [ ] N3  `app.py` — AppTest smoke for manual mode (renders + predicts)
-- [ ] N4  Docs: README "try a real match" section; friendlier live-source error; suite green
+- [x] N1  `data/manual.py` — `build_manual_match(...)` builder + validation (TDD)
+- [x] N2  `app.py` — "Manual entry" data source: number inputs + optional players table
+- [x] N3  `app.py` — AppTest smoke for manual mode (renders + predicts)
+- [x] N4  Docs: README "try a real match" section; friendlier live-source error; suite green
 
 ## Done criteria
 - All boxes checked
