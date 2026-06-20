@@ -108,13 +108,27 @@ PYTHONPATH=src .venv/bin/python -m jackpot.national "TeamA" "TeamB" 2000 1700 --
 World Cup matches are treated as **neutral** venues by default. A small sample Elo
 table is bundled; pass explicit ratings (from eloratings.net) for any nation.
 
+## Corners & cards (count props)
+
+Corners and cards are separate count markets (their own Poisson, not from the
+goals matrix). Because the free feeds lack corner/referee data, these are fed by
+**manually entered rates**:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m jackpot.counts "Liverpool" "Everton" --ref 5.5
+```
+
+Corners use each team's corners-for/against; cards scale by a **referee** factor
+(cards/game vs the league average) — the dominant driver of bookings. Reports
+total + team Over/Under with fair odds.
+
 ## Layout
 
 ```
 src/jackpot/
   poisson.py    matrix.py    markets.py    odds.py      # engine
   strength.py   lambdas.py   players.py   predict.py    # model + orchestration
-  metrics.py    backtest.py   national.py               # evaluation, tuning, Elo variant
+  metrics.py    backtest.py   national.py   counts.py   # evaluation, tuning, variants
   data/         base · sample · understat · weather · results · manual
   app.py        # Streamlit UI (st.tabs per market)
 tests/          # pytest
@@ -123,11 +137,10 @@ docs/specs/     # design spec + tasks
 
 ## Roadmap (not yet built)
 
-- More player props (shots, cards, assists)
-- Team props: **corners / cards** — needs FBref data (corner data absent from
-  Understat; cards need referee data). Separate scraping phase.
+- More player props (shots, assists)
 - Live data revival (headless browser, since Understat is now Cloudflare-gated)
-- Streamlit tab for the national-team / World Cup variant
+- Auto-filled corner/card rates (currently manual entry)
+- Streamlit tabs for the national-team variant and count props
 
 Done:
 - **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
@@ -137,6 +150,8 @@ Done:
   calibration, weight tuning) — `docs/specs/2026-06-20-backtest-harness-design.md`
 - **World Cup / national-team variant** (Elo → expected goals, neutral venues),
   reusing the full market engine — `docs/specs/2026-06-20-national-variant-design.md`
+- **Corners & cards** count props (independent Poisson, referee factor, manual
+  rates) — `docs/specs/2026-06-20-count-props-design.md`
 
 ## Disclaimer
 
