@@ -64,8 +64,20 @@ def elo_to_lambdas(
     """
     dr = (elo_home - elo_away) + (0.0 if neutral else home_adv_elo)
     supremacy = goals_per_elo * dr
-    lam_home = max(LAMBDA_FLOOR, (total_goals + supremacy) / 2.0)
-    lam_away = max(LAMBDA_FLOOR, (total_goals - supremacy) / 2.0)
+    raw_home = (total_goals + supremacy) / 2.0
+    raw_away = (total_goals - supremacy) / 2.0
+    lam_home = max(LAMBDA_FLOOR, raw_home)
+    lam_away = max(LAMBDA_FLOOR, raw_away)
+
+    # If the floor lifted the underdog, shed the surplus from the favourite so
+    # total expected goals stays at ``total_goals`` (the clamped side can't go
+    # lower, so all goal markets would otherwise be biased upward).
+    excess = (lam_home + lam_away) - total_goals
+    if excess > 0:
+        if raw_home >= raw_away:
+            lam_home = max(LAMBDA_FLOOR, lam_home - excess)
+        else:
+            lam_away = max(LAMBDA_FLOOR, lam_away - excess)
     return lam_home, lam_away
 
 
@@ -74,11 +86,21 @@ _VALUE_THRESHOLD = 0.05
 _PLAYER_TOP_N = 8
 
 
-def _o(prob: float, market_p: Optional[float] = None) -> Dict[str, object]:
+_REQUIRED_MR_KEYS = {"home", "draw", "away"}
+
+
+def _o(
+    prob: float,
+    market_p: Optional[float] = None,
+    raw_model_p: Optional[float] = None,
+) -> Dict[str, object]:
+    """Per-outcome record. Value compares the *raw model* prob to the market, so a
+    blended output probability never dilutes the value signal."""
+    model_p = raw_model_p if raw_model_p is not None else prob
     return {
         "prob": prob,
         "fair_odds": fair_odds(prob),
-        "value": market_p is not None and is_value(prob, market_p, _VALUE_THRESHOLD),
+        "value": market_p is not None and is_value(model_p, market_p, _VALUE_THRESHOLD),
     }
 
 
@@ -119,6 +141,11 @@ def predict_international(
     Elo -> expected goals -> the same score matrix and markets as the club model,
     so the output shape and consistency guarantees match ``predict()``.
     """
+    if market_odds is not None and set(market_odds) != _REQUIRED_MR_KEYS:
+        raise ValueError(
+            f"market_odds must have exactly keys {_REQUIRED_MR_KEYS}, got {set(market_odds)}"
+        )
+
     lam_home, lam_away = elo_to_lambdas(elo_home, elo_away, neutral=neutral)
     matrix = build_score_matrix(lam_home, lam_away)
 
@@ -130,7 +157,7 @@ def predict_international(
         final_mr = raw_mr
 
     match_result = {
-        k: _o(final_mr[k], market_mr[k] if market_mr else None)
+        k: _o(final_mr[k], market_mr[k] if market_mr else None, raw_model_p=raw_mr[k])
         for k in ("home", "draw", "away")
     }
     over_under = {}
