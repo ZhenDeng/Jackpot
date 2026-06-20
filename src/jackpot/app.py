@@ -6,11 +6,14 @@ from __future__ import annotations
 
 import streamlit as st
 
+from jackpot.data.manual import build_manual_match, rows_to_squad
 from jackpot.data.sample import SampleDataProvider
 from jackpot.data.understat import UnderstatProvider
 from jackpot.data.weather import weather_adjustment
 from jackpot.odds import fair_odds
 from jackpot.predict import predict
+
+DATA_SOURCES = ["Sample (offline)", "Manual entry", "Understat (live)"]
 
 st.set_page_config(page_title="Jackpot — Soccer Predictions", page_icon="⚽", layout="centered")
 
@@ -39,23 +42,62 @@ st.caption("Dixon–Coles goal model · xG-based · every market from one score 
 # ---- inputs ----
 with st.sidebar:
     st.header("Match")
-    source = st.radio("Data source", ["Sample (offline)", "Understat (live)"])
-    provider = get_provider(source)
+    source = st.radio("Data source", DATA_SOURCES)
+    manual = source == "Manual entry"
 
-    if source.startswith("Sample"):
-        leagues = provider.list_leagues()
+    # state carried into the prediction section
+    provider = league = home = away = None
+    man_inputs = {}
+
+    if manual:
+        st.caption("Type a real fixture's recent form (xG per game preferred).")
+        league_avg = st.number_input("League avg goals / team / game", 0.1, 5.0, 1.45, 0.05)
+        hcol, acol = st.columns(2)
+        with hcol:
+            st.markdown("**Home**")
+            hn = st.text_input("Home name", "Home FC")
+            hs = st.number_input("Home scored/game", 0.0, 6.0, 1.8, 0.1)
+            hc = st.number_input("Home conceded/game", 0.0, 6.0, 1.1, 0.1)
+            hm = st.number_input("Home matches", 1, 60, 20)
+        with acol:
+            st.markdown("**Away**")
+            an = st.text_input("Away name", "Away FC")
+            as_ = st.number_input("Away scored/game", 0.0, 6.0, 1.2, 0.1)
+            ac = st.number_input("Away conceded/game", 0.0, 6.0, 1.6, 0.1)
+            am = st.number_input("Away matches", 1, 60, 20)
+
+        home_squad = away_squad = None
+        if st.checkbox("Add key players (optional, for goalscorer props)"):
+            st.caption("Leave blank to skip. xG/90 ≈ a striker's chance quality per match.")
+            cols = ["Player", "xG/90", "Minutes", "Penalty"]
+            blank = [{c: ("" if c == "Player" else (90.0 if c == "Minutes" else (0.0 if c == "xG/90" else False))) for c in cols} for _ in range(3)]
+            st.markdown("Home players")
+            home_rows = st.data_editor(blank, num_rows="dynamic", key="home_players")
+            st.markdown("Away players")
+            away_rows = st.data_editor([dict(b) for b in blank], num_rows="dynamic", key="away_players")
+            home_squad = rows_to_squad(home_rows)
+            away_squad = rows_to_squad(away_rows)
+
+        home, away = hn, an
+        man_inputs = dict(
+            home_name=hn, home_scored=hs, home_conceded=hc, home_matches=hm,
+            away_name=an, away_scored=as_, away_conceded=ac, away_matches=am,
+            league_avg=league_avg, home_squad=home_squad, away_squad=away_squad,
+        )
     else:
-        leagues = list(["EPL", "La Liga", "Serie A", "Bundesliga", "Ligue 1"])
-    league = st.selectbox("League", leagues)
-
-    try:
-        teams = provider.list_teams(league)
-    except Exception as e:  # pragma: no cover - UI guard
-        st.error(f"Could not load teams: {e}")
-        teams = []
-
-    home = st.selectbox("Home team", teams, index=0 if teams else None)
-    away = st.selectbox("Away team", teams, index=1 if len(teams) > 1 else None)
+        provider = get_provider(source)
+        if source.startswith("Sample"):
+            leagues = provider.list_leagues()
+        else:
+            leagues = ["EPL", "La Liga", "Serie A", "Bundesliga", "Ligue 1"]
+        league = st.selectbox("League", leagues)
+        try:
+            teams = provider.list_teams(league)
+        except Exception as e:  # pragma: no cover - UI guard
+            st.error(f"Could not load teams: {e}")
+            teams = []
+        home = st.selectbox("Home team", teams, index=0 if teams else None)
+        away = st.selectbox("Away team", teams, index=1 if len(teams) > 1 else None)
 
     st.subheader("Market odds (optional)")
     st.caption("Enter bookmaker decimal odds to enable value flags + blending.")
@@ -86,13 +128,25 @@ with st.sidebar:
 
 # ---- prediction ----
 if go:
-    if not home or not away or home == away:
-        st.warning("Pick two different teams.")
+    if not home or not away or str(home).strip() == str(away).strip():
+        st.warning("Enter two different teams." if manual else "Pick two different teams.")
         st.stop()
     try:
-        match = provider.get_match(home, away, league)
+        if manual:
+            match = build_manual_match(**man_inputs)
+        else:
+            match = provider.get_match(home, away, league)
+    except ValueError as e:
+        st.error(f"Invalid input: {e}")
+        st.stop()
     except Exception as e:
-        st.error(f"Failed to load match data: {e}")
+        if manual:
+            st.error(f"Failed to build match: {e}")
+        else:
+            st.error(
+                f"Failed to load match data: {e}. Live Understat is currently blocked "
+                "by Cloudflare — use Sample or Manual entry."
+            )
         st.stop()
 
     if market_odds is not None:

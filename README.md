@@ -46,9 +46,25 @@ python3 -m venv .venv
 PYTHONPATH=src .venv/bin/streamlit run src/jackpot/app.py
 ```
 
-In the sidebar: pick the data source (start with **Sample (offline)**), a league
-and two teams, optionally enter bookmaker odds to enable value flags, then
-**Predict**.
+In the sidebar pick a **data source**:
+
+- **Sample (offline)** — bundled teams, zero setup. Best for a first look.
+- **Manual entry** — type a real upcoming fixture's recent form (xG per game) and
+  optionally a few key players, then **Predict**. The way to try a real match today.
+- **Understat (live)** — ⚠️ currently blocked: Understat moved behind Cloudflare and
+  no longer serves data to simple scrapers. Needs a headless-browser phase to revive.
+
+Then optionally enter bookmaker odds (value flags + blending) or kickoff weather,
+and hit **Predict**.
+
+### Try a real match (Manual entry)
+
+1. Run the app, set **Data source → Manual entry**.
+2. Enter each team's recent **scored** and **conceded** per game — use xG/game if you
+   have it (e.g. from fbref.com or understat.com in your browser), goals/game otherwise.
+3. Set the league average (~1.4–1.5 for top leagues).
+4. (Optional) tick **Add key players** and enter a striker or two (xG/90 ~0.3–0.9).
+5. **Predict** — every tab populates, including Goalscorers if you added players.
 
 ## Tests
 

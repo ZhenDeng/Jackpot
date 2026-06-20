@@ -76,6 +76,20 @@ def test_app_renders_team_props():
     assert "Winning Margin" in body
 
 
+def test_app_manual_entry_produces_prediction():
+    at = _fresh()
+    # switch data source to Manual entry; defaults are a valid fixture
+    at.radio[0].set_value("Manual entry").run()
+    at.button[0].click().run()
+    assert not at.exception
+    # confidence metric + a probability rendered from manually-entered form
+    assert any("Confidence" in m.label for m in at.metric)
+    body = " ".join(m.value for m in at.markdown)
+    assert "%" in body
+    # default manual home (stronger) should be favourite -> appears in 1X2 tab
+    assert "Home FC" in body
+
+
 def test_app_warns_on_same_team_both_sides():
     at = _fresh()
     # force both sides to the same team -> warning
