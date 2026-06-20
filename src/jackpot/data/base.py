@@ -7,8 +7,18 @@ one new provider, nothing else changes.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional
+
+
+@dataclass
+class PlayerForm:
+    """A single player's scoring inputs for the goalscorer model."""
+
+    name: str
+    xg_per90: float
+    expected_minutes: float = 90.0
+    penalty_taker: bool = False
 
 
 @dataclass
@@ -20,6 +30,7 @@ class TeamForm:
     conceded_per_game: float
     matches: int
     uses_xg: bool = False
+    squad: Optional[List["PlayerForm"]] = None
 
 
 @dataclass

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from .base import TeamForm, MatchContext, MatchData, MatchDataProvider
+from .base import PlayerForm, TeamForm, MatchContext, MatchData, MatchDataProvider
 
 # scored/conceded are season xG-per-game style figures (illustrative, not live)
 _LEAGUES: Dict[str, Dict[str, Dict[str, float]]] = {
@@ -31,6 +31,35 @@ _LEAGUES: Dict[str, Dict[str, Dict[str, float]]] = {
 # rough league average goals per team per game
 _LEAGUE_AVG: Dict[str, float] = {"EPL": 1.45, "La Liga": 1.35}
 
+# illustrative squads (xg_per90, expected_minutes, penalty_taker) for the demo
+_SQUADS: Dict[str, List[PlayerForm]] = {
+    "Manchester City": [
+        PlayerForm("E. Haaland", 0.95, 88, penalty_taker=True),
+        PlayerForm("P. Foden", 0.45, 82),
+        PlayerForm("B. Silva", 0.30, 80),
+        PlayerForm("J. Alvarez", 0.40, 55),
+        PlayerForm("K. De Bruyne", 0.35, 70),
+    ],
+    "Burnley": [
+        PlayerForm("L. Foster", 0.35, 80, penalty_taker=True),
+        PlayerForm("J. Rodriguez", 0.25, 72),
+        PlayerForm("W. Odobert", 0.20, 75),
+        PlayerForm("D. Brownhill", 0.12, 85),
+    ],
+    "Arsenal": [
+        PlayerForm("B. Saka", 0.50, 85, penalty_taker=True),
+        PlayerForm("K. Havertz", 0.45, 80),
+        PlayerForm("G. Martinelli", 0.40, 78),
+        PlayerForm("M. Odegaard", 0.35, 82),
+    ],
+    "Real Madrid": [
+        PlayerForm("J. Bellingham", 0.55, 85, penalty_taker=True),
+        PlayerForm("Vinicius Jr", 0.55, 84),
+        PlayerForm("Rodrygo", 0.40, 78),
+        PlayerForm("F. Valverde", 0.25, 86),
+    ],
+}
+
 
 class SampleDataProvider(MatchDataProvider):
     def list_teams(self, league: str) -> List[str]:
@@ -52,6 +81,8 @@ class SampleDataProvider(MatchDataProvider):
             conceded_per_game=row["conceded"],
             matches=int(row["matches"]),
             uses_xg=True,
+            # copy so callers can't mutate the shared module-level squad list
+            squad=list(_SQUADS[name]) if name in _SQUADS else None,
         )
 
     def get_match(self, home_team: str, away_team: str, league: str) -> MatchData:

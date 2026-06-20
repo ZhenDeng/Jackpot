@@ -48,6 +48,20 @@ def test_app_produces_prediction_for_two_teams():
     assert "fair odds" in body
 
 
+def test_app_renders_goalscorer_props():
+    at = _fresh()
+    at.selectbox[1].set_value("Manchester City")
+    at.selectbox[2].set_value("Burnley")
+    at.run()
+    at.button[0].click().run()
+    assert not at.exception
+    body = " ".join(m.value for m in at.markdown)
+    # Haaland only appears in the goalscorers tab -> proves player props rendered
+    assert "Haaland" in body
+    captions = " ".join(c.value for c in at.caption)
+    assert "Anytime goalscorer" in captions
+
+
 def test_app_warns_on_same_team_both_sides():
     at = _fresh()
     # force both sides to the same team -> warning

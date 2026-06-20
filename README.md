@@ -1,8 +1,8 @@
 # ⚽ Jackpot — Soccer Bet Prediction
 
 Predict every item in a bet **Tab** — Match Result (1X2), Over/Under, BTTS,
-Correct Score, Double Chance, Draw No Bet — for a soccer match, from a single
-consistent goal model.
+Correct Score, Double Chance, Draw No Bet, and **Anytime Goalscorer** player props
+— for a soccer match, from a single consistent goal model.
 
 ## How it works
 
@@ -42,7 +42,7 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 
 # run the app (works offline with the bundled sample data)
-.venv/bin/streamlit run src/jackpot/app.py
+PYTHONPATH=src .venv/bin/streamlit run src/jackpot/app.py
 ```
 
 In the sidebar: pick the data source (start with **Sample (offline)**), a league
@@ -63,7 +63,7 @@ suite is deterministic and fast.
 ```
 src/jackpot/
   poisson.py    matrix.py    markets.py    odds.py      # engine
-  strength.py   lambdas.py   predict.py                 # model + orchestration
+  strength.py   lambdas.py   players.py   predict.py    # model + orchestration
   data/         base · sample · understat · weather     # swappable data layer
   app.py        # Streamlit UI (st.tabs per market)
 tests/          # pytest
@@ -72,10 +72,13 @@ docs/specs/     # design spec + tasks
 
 ## Roadmap (not yet built)
 
-- Player props (anytime scorer, shots, cards)
+- More player props (shots, cards, assists)
 - Team props: corners / cards (needs referee + corner data)
 - World Cup national-team variant (Elo + FBref national xG)
 - Backtesting/calibration harness (RPS, log-loss, walk-forward)
+
+Done: **Anytime Goalscorer** player props (xG-share allocation of team λ, penalty
+boost, expected-minutes scaling) — see `docs/specs/2026-06-20-player-props-design.md`.
 
 ## Disclaimer
 
