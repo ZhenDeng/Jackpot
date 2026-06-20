@@ -34,6 +34,37 @@ def understat_league_code(league: str) -> str:
     return _LEAGUE_CODES[league]
 
 
+def _unescape_understat(payload: str) -> str:
+    """Reverse Understat's hex-escaping of a UTF-8 JSON string.
+
+    Understat embeds the JSON with ``\\xNN`` byte escapes. The correct round-trip
+    is: interpret the escapes to recover the raw bytes, then decode them as UTF-8 —
+    otherwise multi-byte names (Alavés, Saint-Étienne) become mojibake. Falls back
+    to the naive decode if the strict round-trip fails.
+    """
+    try:
+        return (
+            payload.encode("utf-8")
+            .decode("unicode_escape")
+            .encode("latin-1")
+            .decode("utf-8")
+        )
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return payload.encode("utf-8").decode("unicode_escape")
+
+
+def compute_league_avg(teams: Dict[str, Dict[str, float]]) -> float:
+    """Match-weighted league average goals/xG per team per game.
+
+    A flat mean of per-team rates over-weights teams that have played fewer games
+    (common mid-season), biasing every lambda. Weighting by ``matches`` fixes it.
+    """
+    total_matches = sum(t["matches"] for t in teams.values())
+    if total_matches <= 0:
+        raise ValueError("no matches available to compute league average")
+    return sum(t["scored_per_game"] * t["matches"] for t in teams.values()) / total_matches
+
+
 def parse_teams_data(html: str) -> Dict[str, Dict[str, float]]:
     """Extract per-team xG/xGA-per-game and match count from an Understat page.
 
@@ -43,9 +74,7 @@ def parse_teams_data(html: str) -> Dict[str, Dict[str, float]]:
     match = _TEAMS_DATA_RE.search(html)
     if not match:
         raise ValueError("teamsData payload not found in Understat HTML")
-    # Understat hex-escapes the JSON string; unicode_escape reverses that.
-    raw = match.group("json").encode("utf8").decode("unicode_escape")
-    teams = json.loads(raw)
+    teams = json.loads(_unescape_understat(match.group("json")))
 
     out: Dict[str, Dict[str, float]] = {}
     for team in teams.values():
@@ -93,7 +122,7 @@ class UnderstatProvider(MatchDataProvider):
         if away_team not in teams:
             raise KeyError(f"team not found in {league}: {away_team}")
 
-        league_avg = sum(t["scored_per_game"] for t in teams.values()) / len(teams)
+        league_avg = compute_league_avg(teams)
 
         def form(name: str) -> TeamForm:
             row = teams[name]

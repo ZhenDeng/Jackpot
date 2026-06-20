@@ -38,6 +38,11 @@ def build_score_matrix(
         for a in range(n):
             pa = poisson_pmf(a, lam_away)
             cell = ph * pa * dixon_coles_tau(h, a, lam_home, lam_away, rho)
+            if cell < 0:
+                raise ValueError(
+                    f"negative scoreline probability at ({h},{a}); rho={rho} "
+                    "is out of the safe range for these lambdas"
+                )
             grid[h][a] = cell
             total += cell
 

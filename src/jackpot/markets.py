@@ -32,7 +32,10 @@ def over_under(m: Matrix, line: float) -> Dict[str, float]:
     over = sum(
         m[h][a] for h in range(n) for a in range(n) if (h + a) > line
     )
-    return {"over": over, "under": 1.0 - over}
+    under = sum(
+        m[h][a] for h in range(n) for a in range(n) if (h + a) <= line
+    )
+    return {"over": over, "under": under}
 
 
 def btts(m: Matrix) -> Dict[str, float]:
@@ -67,5 +70,5 @@ def draw_no_bet(m: Matrix) -> Dict[str, float]:
     r = match_result(m)
     non_draw = r["home"] + r["away"]
     if non_draw <= 0:
-        return {"home": 0.5, "away": 0.5}
+        raise ValueError("degenerate matrix: draw probability is ~1, DNB undefined")
     return {"home": r["home"] / non_draw, "away": r["away"] / non_draw}

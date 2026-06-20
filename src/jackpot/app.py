@@ -8,6 +8,8 @@ import streamlit as st
 
 from jackpot.data.sample import SampleDataProvider
 from jackpot.data.understat import UnderstatProvider
+from jackpot.data.weather import weather_adjustment
+from jackpot.odds import fair_odds
 from jackpot.predict import predict
 
 st.set_page_config(page_title="Jackpot — Soccer Predictions", page_icon="⚽", layout="centered")
@@ -68,6 +70,17 @@ with st.sidebar:
         market_odds = {"home": oh, "draw": od, "away": oa}
         blend_weight = st.slider("Model weight (vs market)", 0.0, 1.0, 0.7, 0.05)
 
+    st.subheader("Weather (optional)")
+    st.caption("Strong wind/rain modestly lowers expected goals (bounded).")
+    use_weather = st.checkbox("Apply kickoff weather")
+    weather_mult = 1.0
+    if use_weather:
+        wc1, wc2 = st.columns(2)
+        wind_kph = wc1.number_input("Wind (kph)", min_value=0.0, value=10.0, step=5.0)
+        rain_mm = wc2.number_input("Rain (mm/h)", min_value=0.0, value=0.0, step=1.0)
+        weather_mult = weather_adjustment(wind_kph=wind_kph, rain_mm=rain_mm)
+        st.caption(f"Goal multiplier applied to both sides: ×{weather_mult:.3f}")
+
     go = st.button("Predict", type="primary", use_container_width=True)
 
 
@@ -84,6 +97,9 @@ if go:
 
     if market_odds is not None:
         match.context.market_odds = market_odds
+    if weather_mult != 1.0:
+        match.context.home_adjust = weather_mult
+        match.context.away_adjust = weather_mult
 
     out = predict(match, blend_weight=blend_weight)
 
@@ -112,7 +128,7 @@ if go:
 
     with tabs[3]:
         for h, a, p in m["correct_score"]:
-            st.write(f"**{h}–{a}** — {_pct(p)}  ·  fair odds {_odds(1 / p) if p else '∞'}")
+            st.write(f"**{h}–{a}** — {_pct(p)}  ·  fair odds {_odds(fair_odds(p))}")
 
     with tabs[4]:
         _row(f"{home} or Draw (1X)", m["double_chance"]["1X"])

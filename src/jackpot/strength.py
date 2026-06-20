@@ -48,6 +48,8 @@ def estimate_strength(
     """
     if league_avg <= 0:
         raise ValueError("league_avg must be positive")
+    if rates.matches < 0:
+        raise ValueError("matches must be non-negative")
     raw_attack = rates.scored_per_game / league_avg
     raw_defense = rates.conceded_per_game / league_avg
     attack = _shrink(raw_attack, rates.matches, shrink_k)

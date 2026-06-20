@@ -76,12 +76,11 @@ def predict(
     market_mr: Optional[Dict[str, float]] = None
     if ctx.market_odds:
         market_mr = strip_overround(ctx.market_odds)
+        # Blending two normalised distributions yields a normalised one, so no
+        # renormalisation is needed; weight is preserved exactly.
         final_mr = {
             k: blend(raw_mr[k], market_mr[k], blend_weight) for k in raw_mr
         }
-        # renormalise after blending so it still sums to 1
-        s = sum(final_mr.values())
-        final_mr = {k: v / s for k, v in final_mr.items()}
     else:
         final_mr = raw_mr
 
