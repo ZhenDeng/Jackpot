@@ -1,7 +1,7 @@
 import pytest
 
 from jackpot.data.base import MatchData, PlayerForm
-from jackpot.data.manual import build_manual_match
+from jackpot.data.manual import build_manual_match, rows_to_squad, safe_float
 from jackpot.predict import predict
 
 
@@ -66,3 +66,51 @@ def test_market_odds_passed_through_enable_value():
 def test_validation_rejects_bad_inputs(bad):
     with pytest.raises(ValueError):
         _valid(**bad)
+
+
+def test_rejects_identical_team_names():
+    with pytest.raises(ValueError):
+        _valid(home_name="Arsenal", away_name="Arsenal")
+    # whitespace-only difference is still the same team
+    with pytest.raises(ValueError):
+        _valid(home_name="Arsenal", away_name="Arsenal ")
+
+
+def test_rejects_both_teams_zero_attack():
+    with pytest.raises(ValueError):
+        _valid(home_scored=0.0, away_scored=0.0)
+    # one team at zero is allowed (a real, if extreme, fixture)
+    assert _valid(home_scored=0.0, away_scored=1.2) is not None
+
+
+# ---- safe_float ----
+
+def test_safe_float_keeps_zero_but_defaults_blanks():
+    assert safe_float("", 90.0) == 90.0       # blank -> default
+    assert safe_float(None, 90.0) == 90.0      # absent -> default
+    assert safe_float(0.0, 90.0) == 0.0        # explicit zero is preserved
+    assert safe_float("0.5", 90.0) == 0.5      # numeric string parses
+    assert safe_float(" 0.7 ", 90.0) == 0.7    # trailing space tolerated
+    assert safe_float("abc", 90.0) == 90.0     # garbage -> default (no crash)
+
+
+# ---- rows_to_squad ----
+
+def test_rows_to_squad_coerces_and_skips_blanks():
+    rows = [
+        {"Player": "Star", "xG/90": "0.8", "Minutes": "88", "Penalty": True},
+        {"Player": "", "xG/90": "0.4", "Minutes": "80", "Penalty": False},   # blank name skipped
+        {"Player": "Sub", "xG/90": "abc", "Minutes": "", "Penalty": False},  # bad values -> safe defaults
+    ]
+    squad = rows_to_squad(rows)
+    names = [p.name for p in squad]
+    assert names == ["Star", "Sub"]
+    star = squad[0]
+    assert isinstance(star, PlayerForm) and star.penalty_taker is True
+    sub = squad[1]
+    assert sub.xg_per90 == 0.0 and sub.expected_minutes == 90.0  # safe defaults, no crash
+
+
+def test_rows_to_squad_empty_returns_none():
+    assert rows_to_squad([]) is None
+    assert rows_to_squad([{"Player": "", "xG/90": "0.5"}]) is None

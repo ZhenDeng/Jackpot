@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from jackpot.data.base import PlayerForm
-from jackpot.data.manual import build_manual_match
+from jackpot.data.manual import build_manual_match, rows_to_squad
 from jackpot.data.sample import SampleDataProvider
 from jackpot.data.understat import UnderstatProvider
 from jackpot.data.weather import weather_adjustment
@@ -15,24 +14,6 @@ from jackpot.odds import fair_odds
 from jackpot.predict import predict
 
 DATA_SOURCES = ["Sample (offline)", "Manual entry", "Understat (live)"]
-
-
-def _rows_to_squad(rows):
-    """Coerce edited player-table rows into PlayerForm objects (skipping blanks)."""
-    squad = []
-    for r in rows or []:
-        name = (r.get("Player") or "").strip()
-        if not name:
-            continue
-        squad.append(
-            PlayerForm(
-                name=name,
-                xg_per90=float(r.get("xG/90", 0.0) or 0.0),
-                expected_minutes=float(r.get("Minutes", 90.0) or 90.0),
-                penalty_taker=bool(r.get("Penalty", False)),
-            )
-        )
-    return squad or None
 
 st.set_page_config(page_title="Jackpot — Soccer Predictions", page_icon="⚽", layout="centered")
 
@@ -94,8 +75,8 @@ with st.sidebar:
             home_rows = st.data_editor(blank, num_rows="dynamic", key="home_players")
             st.markdown("Away players")
             away_rows = st.data_editor([dict(b) for b in blank], num_rows="dynamic", key="away_players")
-            home_squad = _rows_to_squad(home_rows)
-            away_squad = _rows_to_squad(away_rows)
+            home_squad = rows_to_squad(home_rows)
+            away_squad = rows_to_squad(away_rows)
 
         home, away = hn, an
         man_inputs = dict(
@@ -147,7 +128,7 @@ with st.sidebar:
 
 # ---- prediction ----
 if go:
-    if not home or not away or home == away:
+    if not home or not away or str(home).strip() == str(away).strip():
         st.warning("Enter two different teams." if manual else "Pick two different teams.")
         st.stop()
     try:
@@ -159,11 +140,13 @@ if go:
         st.error(f"Invalid input: {e}")
         st.stop()
     except Exception as e:
-        st.error(
-            f"Failed to load match data: {e}. "
-            "Live Understat is currently blocked by Cloudflare — use Sample or Manual entry."
-            if not manual else f"Failed to build match: {e}"
-        )
+        if manual:
+            st.error(f"Failed to build match: {e}")
+        else:
+            st.error(
+                f"Failed to load match data: {e}. Live Understat is currently blocked "
+                "by Cloudflare — use Sample or Manual entry."
+            )
         st.stop()
 
     if market_odds is not None:
