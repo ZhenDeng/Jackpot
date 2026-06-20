@@ -4,10 +4,10 @@ Source of truth for this phase. Check a box only when implemented AND tests pass
 
 ## Build
 
-- [ ] K1  `understat.py` — parse_cf_clearance + build_request_kwargs (TDD)
-- [ ] K2  `understat.py` — UnderstatProvider accepts cf_clearance/user_agent, uses them (TDD)
-- [ ] K3  `app.py` — Cloudflare cookie + User-Agent inputs in the live branch
-- [ ] K4  README "make Understat live work" section (cookie steps + caveats); suite green
+- [x] K1  `understat.py` — parse_cf_clearance + build_request_kwargs (TDD)
+- [x] K2  `understat.py` — UnderstatProvider accepts cf_clearance/user_agent, uses them (TDD)
+- [x] K3  `app.py` — Cloudflare cookie + User-Agent inputs in the live branch
+- [x] K4  README "make Understat live work" section (cookie steps + caveats); suite green
 
 ## Done criteria
 - All boxes checked

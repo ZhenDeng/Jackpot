@@ -51,11 +51,32 @@ In the sidebar pick a **data source**:
 - **Sample (offline)** — bundled teams, zero setup. Best for a first look.
 - **Manual entry** — type a real upcoming fixture's recent form (xG per game) and
   optionally a few key players, then **Predict**. The way to try a real match today.
-- **Understat (live)** — ⚠️ currently blocked: Understat moved behind Cloudflare and
-  no longer serves data to simple scrapers. Needs a headless-browser phase to revive.
+- **Understat (live)** — ⚠️ Cloudflare-gated. Works **only** if you paste a
+  `cf_clearance` cookie from your browser (see below). Best-effort; manual entry is
+  the reliable fallback.
 
 Then optionally enter bookmaker odds (value flags + blending) or kickoff weather,
 and hit **Predict**.
+
+### Making Understat (live) work — the Cloudflare cookie
+
+Understat sits behind Cloudflare; `requests`, cloudscraper, and even headless
+Chromium all get blocked (a CAPTCHA). The one path that works: solve Cloudflare
+**once in your real browser**, then hand the app your session.
+
+1. Open **https://understat.com** in Chrome/Edge and let it load fully.
+2. DevTools (`Cmd+Option+I` / `F12`) → **Application → Storage → Cookies →
+   `https://understat.com`** → copy the **`cf_clearance`** value.
+3. Console tab → type `navigator.userAgent` → copy it.
+4. In the app, set **Data source → Understat (live)** and paste both the cookie and
+   the User-Agent, then pick teams and **Predict**.
+
+**Caveats** (this is best-effort, not guaranteed):
+- The cookie **expires in ~30 min – a few hours** — re-paste a fresh one when live
+  mode errors.
+- It's **bound to your IP + that exact User-Agent** — they must match.
+- Cloudflare may still block on TLS fingerprint even with a valid cookie. If live
+  mode won't load, use **Manual entry** (same data quality, just typed in).
 
 ### Try a real match (Manual entry)
 
@@ -138,9 +159,10 @@ docs/specs/     # design spec + tasks
 ## Roadmap (not yet built)
 
 - More player props (shots, assists)
-- Live data revival (headless browser, since Understat is now Cloudflare-gated)
 - Auto-filled corner/card rates (currently manual entry)
 - Streamlit tabs for the national-team variant and count props
+- Fully automated live data (currently needs a manual Cloudflare cookie; full
+  automation is blocked by Cloudflare's CAPTCHA)
 
 Done:
 - **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
@@ -152,6 +174,8 @@ Done:
   reusing the full market engine — `docs/specs/2026-06-20-national-variant-design.md`
 - **Corners & cards** count props (independent Poisson, referee factor, manual
   rates) — `docs/specs/2026-06-20-count-props-design.md`
+- **Understat live via Cloudflare cookie** (paste `cf_clearance` + User-Agent) —
+  `docs/specs/2026-06-20-understat-cookie-design.md`
 
 ## Disclaimer
 

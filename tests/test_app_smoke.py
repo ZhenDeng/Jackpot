@@ -76,6 +76,18 @@ def test_app_renders_team_props():
     assert "Winning Margin" in body
 
 
+def test_app_live_mode_shows_cookie_inputs_without_network():
+    at = _fresh()
+    at.radio[0].set_value("Understat (live)").run()
+    assert not at.exception
+    labels = " ".join(ti.label for ti in at.text_input)
+    assert "cf_clearance" in labels        # cookie input present
+    assert "User-Agent" in labels          # UA input present
+    # no cookie supplied -> no network fetch, just a prompt to paste one
+    infos = " ".join(i.value for i in at.info)
+    assert "Cloudflare cookie" in infos
+
+
 def test_app_manual_entry_produces_prediction():
     at = _fresh()
     # switch data source to Manual entry; defaults are a valid fixture
