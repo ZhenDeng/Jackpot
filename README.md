@@ -1,8 +1,9 @@
 # ⚽ Jackpot — Soccer Bet Prediction
 
 Predict every item in a bet **Tab** — Match Result (1X2), Over/Under, BTTS,
-Correct Score, Double Chance, Draw No Bet, and **Anytime Goalscorer** player props
-— for a soccer match, from a single consistent goal model.
+Correct Score, Double Chance, Draw No Bet, **Anytime Goalscorer** player props, and
+**team props** (team total goals, clean sheet, win to nil, winning margin) — for a
+soccer match, from a single consistent goal model.
 
 ## How it works
 
@@ -73,12 +74,15 @@ docs/specs/     # design spec + tasks
 ## Roadmap (not yet built)
 
 - More player props (shots, cards, assists)
-- Team props: corners / cards (needs referee + corner data)
+- Team props: **corners / cards** — needs FBref data (corner data absent from
+  Understat; cards need referee data). Separate scraping phase.
 - World Cup national-team variant (Elo + FBref national xG)
 - Backtesting/calibration harness (RPS, log-loss, walk-forward)
 
-Done: **Anytime Goalscorer** player props (xG-share allocation of team λ, penalty
-boost, expected-minutes scaling) — see `docs/specs/2026-06-20-player-props-design.md`.
+Done:
+- **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
+- **Team props** (team total goals, clean sheet, win to nil, winning margin), all
+  derived exactly from the score matrix — `docs/specs/2026-06-20-team-props-design.md`
 
 ## Disclaimer
 

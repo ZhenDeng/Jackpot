@@ -110,7 +110,8 @@ if go:
 
     m = out["markets"]
     tabs = st.tabs(
-        ["1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance", "Draw No Bet", "Goalscorers"]
+        ["1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance", "Draw No Bet",
+         "Goalscorers", "Team Props"]
     )
 
     with tabs[0]:
@@ -158,6 +159,29 @@ if go:
                         f"{e['player']} — {_pct(e['p_score'])}  "
                         f"(odds {_odds(e['fair_odds'])}){two}"
                     )
+
+    with tabs[7]:
+        st.markdown("**Team Total Goals**")
+        for line, sides in m["team_total_goals"].items():
+            _row(f"{home} Over {line}", sides["home"]["over"])
+            _row(f"{home} Under {line}", sides["home"]["under"])
+            _row(f"{away} Over {line}", sides["away"]["over"])
+            _row(f"{away} Under {line}", sides["away"]["under"])
+            st.divider()
+        st.markdown("**Clean Sheet**")
+        _row(f"{home}", m["clean_sheet"]["home"])
+        _row(f"{away}", m["clean_sheet"]["away"])
+        st.markdown("**Win to Nil**")
+        _row(f"{home}", m["win_to_nil"]["home"])
+        _row(f"{away}", m["win_to_nil"]["away"])
+        st.markdown("**Winning Margin**")
+        labels = {
+            "home_2plus": f"{home} by 2+", "home_1": f"{home} by 1", "draw": "Draw",
+            "away_1": f"{away} by 1", "away_2plus": f"{away} by 2+",
+        }
+        for key, label in labels.items():
+            _row(label, m["winning_margin"][key])
+        st.caption("Corners & cards are out of scope on the free data stack (no corner data; cards need referee data).")
 
     st.caption(
         "Predictions are probability estimates, not guarantees. Single matches are "

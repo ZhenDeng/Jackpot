@@ -17,6 +17,7 @@ from . import players as pl
 from .odds import fair_odds, strip_overround, blend, is_value, confidence_level
 
 DEFAULT_OU_LINES = (1.5, 2.5, 3.5)
+TEAM_TOTAL_LINES = (0.5, 1.5, 2.5)
 VALUE_THRESHOLD = 0.05
 DEFAULT_PLAYER_PROPS_TOP_N = 8
 
@@ -136,6 +137,23 @@ def predict(
         "away": _player_props(match.away, lam_away, player_props_top_n),
     }
 
+    # team props — all derived exactly from the matrix (no market odds -> value False)
+    team_total_goals = {}
+    for line in TEAM_TOTAL_LINES:
+        tt = mk.team_total_goals(matrix, line)
+        team_total_goals[str(line)] = {
+            side: {
+                "over": _outcome(tt[side]["over"], None),
+                "under": _outcome(tt[side]["under"], None),
+            }
+            for side in ("home", "away")
+        }
+    raw_cs = mk.clean_sheet(matrix)
+    raw_wtn = mk.win_to_nil(matrix)
+    clean_sheet = {k: _outcome(v, None) for k, v in raw_cs.items()}
+    win_to_nil = {k: _outcome(v, None) for k, v in raw_wtn.items()}
+    winning_margin = {k: _outcome(v, None) for k, v in mk.winning_margin(matrix).items()}
+
     # 7. honest confidence from the thinner of the two samples
     min_matches = min(match.home.matches, match.away.matches)
     has_xg = match.home.uses_xg and match.away.uses_xg
@@ -155,5 +173,9 @@ def predict(
             "double_chance": double_chance,
             "draw_no_bet": draw_no_bet,
             "player_props": player_props,
+            "team_total_goals": team_total_goals,
+            "clean_sheet": clean_sheet,
+            "win_to_nil": win_to_nil,
+            "winning_margin": winning_margin,
         },
     }
