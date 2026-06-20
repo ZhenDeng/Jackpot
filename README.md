@@ -94,13 +94,27 @@ is coin-flip), log-loss, Brier — plus top-pick accuracy and a calibration tabl
 (predicted vs actual home-win frequency). It then grid-searches `home_adv` / `rho`
 and prints the best-tuned weights. Download real CSVs from football-data.co.uk.
 
+## World Cup / national teams
+
+National teams have no league table, so strength comes from **Elo ratings** instead
+of club xG. Elo → expected goals → the same score matrix and markets:
+
+```bash
+PYTHONPATH=src .venv/bin/python -m jackpot.national "Brazil" "Croatia"
+# explicit ratings / a home venue:
+PYTHONPATH=src .venv/bin/python -m jackpot.national "TeamA" "TeamB" 2000 1700 --home
+```
+
+World Cup matches are treated as **neutral** venues by default. A small sample Elo
+table is bundled; pass explicit ratings (from eloratings.net) for any nation.
+
 ## Layout
 
 ```
 src/jackpot/
   poisson.py    matrix.py    markets.py    odds.py      # engine
   strength.py   lambdas.py   players.py   predict.py    # model + orchestration
-  metrics.py    backtest.py                             # evaluation + tuning
+  metrics.py    backtest.py   national.py               # evaluation, tuning, Elo variant
   data/         base · sample · understat · weather · results · manual
   app.py        # Streamlit UI (st.tabs per market)
 tests/          # pytest
@@ -112,8 +126,8 @@ docs/specs/     # design spec + tasks
 - More player props (shots, cards, assists)
 - Team props: **corners / cards** — needs FBref data (corner data absent from
   Understat; cards need referee data). Separate scraping phase.
-- World Cup national-team variant (Elo + FBref national xG)
 - Live data revival (headless browser, since Understat is now Cloudflare-gated)
+- Streamlit tab for the national-team / World Cup variant
 
 Done:
 - **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
@@ -121,6 +135,8 @@ Done:
   derived exactly from the score matrix — `docs/specs/2026-06-20-team-props-design.md`
 - **Backtesting & calibration harness** (walk-forward, RPS/log-loss/Brier,
   calibration, weight tuning) — `docs/specs/2026-06-20-backtest-harness-design.md`
+- **World Cup / national-team variant** (Elo → expected goals, neutral venues),
+  reusing the full market engine — `docs/specs/2026-06-20-national-variant-design.md`
 
 ## Disclaimer
 
