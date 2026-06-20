@@ -40,6 +40,36 @@ def test_parse_players_data_sorts_by_xg_and_skips_zero_minutes():
     assert names[0] == "High"                   # sorted by xG/90 desc
 
 
+def test_parse_players_data_excludes_short_minutes():
+    players = [
+        {"player_name": "Cameo", "team_title": "T", "games": "3", "time": "30", "xG": "0.5"},
+        {"player_name": "Regular", "team_title": "T", "games": "10", "time": "900", "xG": "5.0"},
+    ]
+    names = [p.name for p in parse_players_data(_html(players))["T"]]
+    assert "Cameo" not in names      # below the minimum-minutes threshold
+    assert "Regular" in names
+
+
+def test_parse_players_data_ranks_by_expected_contribution_not_rate():
+    players = [
+        # high per-90 rate but tiny minutes -> low real contribution
+        {"player_name": "Supersub", "team_title": "T", "games": "20", "time": "200", "xG": "2.0"},
+        # solid rate over big minutes -> the real top scorer
+        {"player_name": "Regular", "team_title": "T", "games": "12", "time": "1000", "xG": "5.0"},
+    ]
+    names = [p.name for p in parse_players_data(_html(players))["T"]]
+    assert names[0] == "Regular"  # ranked by raw_output, not raw xG/90
+
+
+def test_parse_players_data_skips_malformed_records():
+    players = [
+        {"player_name": "Good", "team_title": "T", "games": "10", "time": "900", "xG": "5.0"},
+        {"team_title": "T", "games": "10", "time": "900", "xG": "5.0"},  # missing name
+    ]
+    squads = parse_players_data(_html(players))
+    assert [p.name for p in squads["T"]] == ["Good"]
+
+
 def test_parse_players_data_missing_payload_raises():
     with pytest.raises(ValueError):
         parse_players_data("<html>nothing</html>")

@@ -46,6 +46,21 @@ def allocate_lambdas(
     """
     if team_lambda < 0:
         raise ValueError("team_lambda must be non-negative")
+    if not 0.0 <= penalty_fraction <= 1.0:
+        raise ValueError("penalty_fraction must be in [0, 1]")
+
+    # Aggregate entries that share a name so duplicates can't drop lambda mass
+    # (dict keys collide) and break conservation.
+    merged: Dict[str, List] = {}
+    order: List[str] = []
+    for name, raw, pen in entries:
+        if name not in merged:
+            merged[name] = [0.0, False]
+            order.append(name)
+        merged[name][0] += raw
+        merged[name][1] = merged[name][1] or pen
+    entries = [(name, merged[name][0], merged[name][1]) for name in order]
+
     total_raw = sum(raw for _name, raw, _pen in entries)
     if total_raw <= 0:
         return {}

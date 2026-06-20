@@ -59,6 +59,25 @@ def test_allocate_zero_total_returns_empty():
     assert allocate_lambdas(entries, team_lambda=1.5) == {}
 
 
+def test_allocate_aggregates_duplicate_names_preserving_conservation():
+    # two entries share a name -> must not silently drop mass
+    entries = [("Kane", 0.8, True), ("Kane", 0.7, False), ("Smith", 0.3, False)]
+    lams = allocate_lambdas(entries, team_lambda=2.0)
+    assert math.isclose(sum(lams.values()), 2.0, rel_tol=1e-9)
+    # penalty flag is OR-ed across the merged entries, so the boost survives
+    assert lams["Kane"] > lams["Smith"]
+
+
+def test_allocate_rejects_bad_penalty_fraction():
+    entries = [("A", 0.5, True), ("B", 0.5, False)]
+    for bad in (-0.1, 1.5):
+        try:
+            allocate_lambdas(entries, team_lambda=2.0, penalty_fraction=bad)
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
 def test_allocate_splits_penalty_pool_among_multiple_takers():
     entries = [("P1", 0.5, True), ("P2", 0.5, True)]
     lams = allocate_lambdas(entries, team_lambda=2.0)

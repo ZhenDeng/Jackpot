@@ -6,9 +6,7 @@ flows from one matrix, so the Tab is internally consistent.
 """
 from __future__ import annotations
 
-from typing import Dict, Optional, Sequence
-
-from typing import List
+from typing import Dict, List, Optional, Sequence
 
 from .data.base import MatchData, TeamForm
 from .strength import TeamRates, estimate_strength

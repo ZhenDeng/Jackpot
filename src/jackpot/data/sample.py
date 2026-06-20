@@ -81,7 +81,8 @@ class SampleDataProvider(MatchDataProvider):
             conceded_per_game=row["conceded"],
             matches=int(row["matches"]),
             uses_xg=True,
-            squad=_SQUADS.get(name),
+            # copy so callers can't mutate the shared module-level squad list
+            squad=list(_SQUADS[name]) if name in _SQUADS else None,
         )
 
     def get_match(self, home_team: str, away_team: str, league: str) -> MatchData:

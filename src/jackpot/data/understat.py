@@ -27,6 +27,7 @@ _LEAGUE_CODES: Dict[str, str] = {
 _TEAMS_DATA_RE = re.compile(r"teamsData\s*=\s*JSON\.parse\('(?P<json>.*?)'\)", re.DOTALL)
 _PLAYERS_DATA_RE = re.compile(r"playersData\s*=\s*JSON\.parse\('(?P<json>.*?)'\)", re.DOTALL)
 _SQUAD_SIZE = 8
+_MIN_MINUTES = 90.0  # require ~one full match before trusting a per-90 rate
 
 
 def understat_league_code(league: str) -> str:
@@ -107,22 +108,30 @@ def parse_players_data(html: str) -> Dict[str, List[PlayerForm]]:
 
     squads: Dict[str, List[PlayerForm]] = {}
     for p in players:
-        minutes = float(p.get("time", 0) or 0)
-        if minutes <= 0:
-            continue
-        games = float(p.get("games", 0) or 0) or 1.0
-        xg = float(p.get("xG", 0) or 0)
-        squads.setdefault(p["team_title"], []).append(
-            PlayerForm(
-                name=p["player_name"],
-                xg_per90=xg / (minutes / 90.0),
-                expected_minutes=min(90.0, minutes / games),
-                penalty_taker=False,
+        try:
+            minutes = float(p.get("time", 0) or 0)
+            if minutes < _MIN_MINUTES:
+                continue  # too few minutes for a trustworthy per-90 rate
+            games = float(p.get("games", 0) or 0) or 1.0
+            xg = float(p.get("xG", 0) or 0)
+            squads.setdefault(p["team_title"], []).append(
+                PlayerForm(
+                    name=p["player_name"],
+                    xg_per90=xg / (minutes / 90.0),
+                    expected_minutes=min(90.0, minutes / games),
+                    penalty_taker=False,
+                )
             )
-        )
+        except (KeyError, ValueError, TypeError):
+            continue  # one malformed record must not discard the rest
 
+    # Rank by expected per-game contribution (raw_output), which is what the
+    # allocation engine actually uses — not the raw per-90 rate, which a
+    # short-minutes player can inflate.
     for team in squads:
-        squads[team].sort(key=lambda pf: pf.xg_per90, reverse=True)
+        squads[team].sort(
+            key=lambda pf: pf.xg_per90 * pf.expected_minutes / 90.0, reverse=True
+        )
         squads[team] = squads[team][:_SQUAD_SIZE]
     return squads
 
