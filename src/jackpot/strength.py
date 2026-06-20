@@ -11,6 +11,8 @@ import math
 from dataclasses import dataclass
 from typing import List, Tuple
 
+DEFAULT_SHRINK_K = 5.0
+
 
 @dataclass
 class TeamRates:
@@ -39,7 +41,7 @@ def _shrink(raw: float, matches: int, shrink_k: float) -> float:
 def estimate_strength(
     rates: TeamRates,
     league_avg: float,
-    shrink_k: float = 5.0,
+    shrink_k: float = DEFAULT_SHRINK_K,
 ) -> Tuple[float, float]:
     """Return ``(attack_strength, defense_strength)`` relative to league average.
 
