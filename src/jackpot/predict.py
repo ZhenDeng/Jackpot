@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Sequence
 
 from .data.base import MatchData, TeamForm
-from .strength import TeamRates, estimate_strength
-from .lambdas import compute_lambdas
-from .matrix import build_score_matrix
+from .strength import TeamRates, estimate_strength, DEFAULT_SHRINK_K
+from .lambdas import compute_lambdas, DEFAULT_HOME_ADV
+from .matrix import build_score_matrix, DEFAULT_RHO
 from . import markets as mk
 from . import players as pl
 from .odds import fair_odds, strip_overround, blend, is_value, confidence_level
@@ -68,29 +68,36 @@ def predict(
     blend_weight: float = 1.0,
     correct_score_top_n: int = 6,
     player_props_top_n: int = DEFAULT_PLAYER_PROPS_TOP_N,
+    home_adv: float = DEFAULT_HOME_ADV,
+    rho: float = DEFAULT_RHO,
+    shrink_k: float = DEFAULT_SHRINK_K,
 ) -> Dict[str, object]:
     """Produce the full prediction Tab for a match.
 
     ``blend_weight`` is the model's share when market odds are present
     (1.0 = pure model, 0.0 = pure market). Value flags always compare the final
     (possibly blended) probability to the margin-stripped market price.
+
+    ``home_adv`` / ``rho`` / ``shrink_k`` are model weights exposed so the
+    backtest harness can tune them; they default to the engine's standard values.
     """
     ctx = match.context
 
     # 1. strengths (xG-based, shrunk toward league average)
-    h_att, h_def = estimate_strength(_rates(match.home), ctx.league_avg_goals)
-    a_att, a_def = estimate_strength(_rates(match.away), ctx.league_avg_goals)
+    h_att, h_def = estimate_strength(_rates(match.home), ctx.league_avg_goals, shrink_k)
+    a_att, a_def = estimate_strength(_rates(match.away), ctx.league_avg_goals, shrink_k)
 
     # 2. expected goals for this fixture
     lam_home, lam_away = compute_lambdas(
         home_attack=h_att, home_defense=h_def,
         away_attack=a_att, away_defense=a_def,
         league_avg=ctx.league_avg_goals,
+        home_adv=home_adv,
         home_adjust=ctx.home_adjust, away_adjust=ctx.away_adjust,
     )
 
     # 3. the one source of truth
-    matrix = build_score_matrix(lam_home, lam_away)
+    matrix = build_score_matrix(lam_home, lam_away, rho=rho)
 
     # 4. raw market probabilities derived from the matrix
     raw_mr = mk.match_result(matrix)
