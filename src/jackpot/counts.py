@@ -7,10 +7,12 @@ Poissons. Card counts are dominated by the referee, so a referee factor scales t
 from __future__ import annotations
 
 import sys
-from typing import Dict, Sequence
+from typing import Dict, Optional, Sequence
 
 from .poisson import poisson_pmf
 from .odds import fair_odds
+
+_MAX_LAMBDA = 500.0  # explicit domain cap (well above any real corner/card rate)
 
 CORNER_TOTAL_LINES = (8.5, 9.5, 10.5)
 CORNER_TEAM_LINES = (3.5, 4.5)
@@ -20,9 +22,18 @@ DEFAULT_LEAGUE_REF_AVG = 4.0  # league-average yellow+red cards per game per ref
 
 
 def poisson_over_under(lam: float, line: float) -> Dict[str, float]:
-    """Over/Under for a Poisson count at a ``.5`` line (no push)."""
+    """Over/Under for a Poisson count at a ``.5`` line (no push).
+
+    ``line`` must be a half value (9.5, not 9/10) — integer lines imply a push
+    this model does not represent. ``lam`` is capped at a generous domain limit so
+    the direct-space PMF can't silently underflow to a wrong answer.
+    """
     if lam < 0:
         raise ValueError("lam must be non-negative")
+    if lam > _MAX_LAMBDA:
+        raise ValueError(f"lam {lam} exceeds the supported range ({_MAX_LAMBDA})")
+    if line % 1 != 0.5:
+        raise ValueError(f"line must be a .5 value (e.g. 9.5), got {line}")
     under = sum(poisson_pmf(k, lam) for k in range(int(line) + 1))
     return {"over": 1.0 - under, "under": under}
 
@@ -62,7 +73,7 @@ def corners_markets(
 def cards_markets(
     home_rate: float,
     away_rate: float,
-    referee_cpg: float = None,
+    referee_cpg: Optional[float] = None,
     league_ref_avg: float = DEFAULT_LEAGUE_REF_AVG,
     total_lines: Sequence[float] = CARD_TOTAL_LINES,
     team_lines: Sequence[float] = CARD_TEAM_LINES,
@@ -72,9 +83,9 @@ def cards_markets(
         raise ValueError("card rates must be non-negative")
     if league_ref_avg <= 0:
         raise ValueError("league_ref_avg must be positive")
+    if referee_cpg is not None and referee_cpg <= 0:
+        raise ValueError("referee_cpg must be positive when provided")
     ref_factor = (referee_cpg / league_ref_avg) if referee_cpg is not None else 1.0
-    if ref_factor < 0:
-        raise ValueError("referee_cpg must be non-negative")
     lam_home = home_rate * ref_factor
     lam_away = away_rate * ref_factor
     lam_total = lam_home + lam_away
@@ -90,7 +101,11 @@ def cards_markets(
 
 
 def _with_odds(market: Dict[str, object]) -> Dict[str, object]:
-    """Wrap every {over, under} probability leaf with its fair odds."""
+    """Wrap every {over, under} leaf with fair odds.
+
+    Expects a ``corners_markets``/``cards_markets`` shape (``lambda_*`` keys plus
+    ``total``/``home``/``away`` Over-Under tables).
+    """
     out = {k: v for k, v in market.items() if k.startswith("lambda") or k == "ref_factor"}
     for side in ("total", "home", "away"):
         out[side] = {
@@ -107,7 +122,7 @@ def secondary_markets(
     away_corner_against: float,
     home_card_rate: float,
     away_card_rate: float,
-    referee_cpg: float = None,
+    referee_cpg: Optional[float] = None,
     league_ref_avg: float = DEFAULT_LEAGUE_REF_AVG,
 ) -> Dict[str, object]:
     """Corners + cards markets as ``{prob, fair_odds}`` records, from manual rates."""

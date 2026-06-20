@@ -27,6 +27,20 @@ def test_over_under_rejects_negative_lambda():
         poisson_over_under(-1.0, 9.5)
 
 
+def test_over_under_rejects_non_half_line():
+    # integer lines imply a push, which this model does not handle
+    with pytest.raises(ValueError):
+        poisson_over_under(9.0, 10.0)
+    with pytest.raises(ValueError):
+        poisson_over_under(9.0, 10)
+
+
+def test_cards_rejects_zero_referee():
+    # a referee with 0 cards/game is not a meaningful rate (would zero all cards)
+    with pytest.raises(ValueError):
+        cards_markets(2.0, 2.0, referee_cpg=0.0)
+
+
 # ---- corners ----
 
 def test_corners_more_attacking_team_wins_more_corners():
