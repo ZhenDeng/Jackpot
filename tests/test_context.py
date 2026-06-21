@@ -13,7 +13,8 @@ def test_full_rest_is_neutral():
 
 def test_short_rest_penalises():
     assert rest_factor(1) < rest_factor(3) < 1.0
-    assert math.isclose(rest_factor(1), 0.92, abs_tol=0.01)
+    # linear: 0.90 + 0.10*(1/4) = 0.925
+    assert math.isclose(rest_factor(1), 0.925, abs_tol=1e-9)
 
 
 def test_rest_factor_never_below_floor():

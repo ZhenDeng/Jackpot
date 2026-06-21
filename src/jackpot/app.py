@@ -205,7 +205,7 @@ if go:
     if not home or not away or str(home).strip() == str(away).strip():
         st.warning("Enter two different teams.")
         st.stop()
-    if not manual and not national and provider is None:
+    if not manual and not national and (provider is None or not live_ready):
         st.error("Enter your live-source credential first.")
         st.stop()
 
@@ -248,7 +248,7 @@ if go:
     c1, c2, c3 = st.columns(3)
     c1.metric("Expected goals — home", f"{out['lambda_home']:.2f}")
     c2.metric("Expected goals — away", f"{out['lambda_away']:.2f}")
-    c3.metric("Confidence", out.get("confidence", "—"))
+    c3.metric("Confidence", out.get("confidence") or "—")
 
     m = out["markets"]
     tabs = st.tabs(

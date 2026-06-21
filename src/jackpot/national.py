@@ -82,6 +82,7 @@ def elo_to_lambdas(
 
 
 _OU_LINES = (1.5, 2.5, 3.5)
+_TEAM_TOTAL_LINES = (0.5, 1.5, 2.5)   # match the club path's team-total lines
 _VALUE_THRESHOLD = 0.05
 _PLAYER_TOP_N = 8
 
@@ -178,7 +179,7 @@ def predict_international(
     correct_score = mk.correct_score(matrix, 6)
 
     team_total_goals = {}
-    for line in _OU_LINES:
+    for line in _TEAM_TOTAL_LINES:
         tt = mk.team_total_goals(matrix, line)
         team_total_goals[str(line)] = {
             side: {"over": _o(tt[side]["over"]), "under": _o(tt[side]["under"])}
@@ -191,6 +192,10 @@ def predict_international(
     return {
         "home": home,
         "away": away,
+        # shared contract with predict() so a common renderer can read either result
+        "home_team": home,
+        "away_team": away,
+        "confidence": None,
         "elo_home": elo_home,
         "elo_away": elo_away,
         "neutral": neutral,
