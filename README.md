@@ -31,12 +31,9 @@ Key modelling choices:
 
 | Need | Source | Cost |
 | --- | --- | --- |
-| Team & player xG (top-5 leagues) | Understat (scrape) | €0 |
+| Team data (top leagues) | API-Football (free tier, 100 req/day) | €0 |
 | Weather → λ adjustment | Open-Meteo (free, no key) | €0 |
 | Offline demo / tests | bundled `SampleDataProvider` | €0 |
-
-> Scraping Understat is fine for personal use but is **not** licensed for
-> commercial products. See `docs/specs/`.
 
 ## Quick start
 
@@ -57,8 +54,6 @@ In the sidebar pick a **data source**:
   a **free tier (100 req/day)**; covers the top leagues. (For the World Cup, use the
   **World Cup (national)** source — a knockout tournament has no league table.) Paste
   an API key (see below).
-- **Understat (live)** — ⚠️ Cloudflare-gated. Works **only** if you paste a
-  `cf_clearance` cookie from your browser (see below). Best-effort.
 - **World Cup (national)** — predict an international match from **Elo ratings** (no
   command line needed). Enter the two nations and their Elo (from eloratings.net);
   World Cup = neutral venue by default.
@@ -93,31 +88,11 @@ Off by default (no effect). The resulting goal multipliers are shown before you 
 Team form is goals-based in this version (the model's shrinkage handles it). Per-team
 xG, player props, corners/cards, and odds from API-Football are planned follow-ups.
 
-### Making Understat (live) work — the Cloudflare cookie
-
-Understat sits behind Cloudflare; `requests`, cloudscraper, and even headless
-Chromium all get blocked (a CAPTCHA). The one path that works: solve Cloudflare
-**once in your real browser**, then hand the app your session.
-
-1. Open **https://understat.com** in Chrome/Edge and let it load fully.
-2. DevTools (`Cmd+Option+I` / `F12`) → **Application → Storage → Cookies →
-   `https://understat.com`** → copy the **`cf_clearance`** value.
-3. Console tab → type `navigator.userAgent` → copy it.
-4. In the app, set **Data source → Understat (live)** and paste both the cookie and
-   the User-Agent, then pick teams and **Predict**.
-
-**Caveats** (this is best-effort, not guaranteed):
-- The cookie **expires in ~30 min – a few hours** — re-paste a fresh one when live
-  mode errors.
-- It's **bound to your IP + that exact User-Agent** — they must match.
-- Cloudflare may still block on TLS fingerprint even with a valid cookie. If live
-  mode won't load, use **Manual entry** (same data quality, just typed in).
-
 ### Try a real match (Manual entry)
 
 1. Run the app, set **Data source → Manual entry**.
 2. Enter each team's recent **scored** and **conceded** per game — use xG/game if you
-   have it (e.g. from fbref.com or understat.com in your browser), goals/game otherwise.
+   have it (e.g. from fbref.com in your browser), goals/game otherwise.
 3. Set the league average (~1.4–1.5 for top leagues).
 4. (Optional) tick **Add key players** and enter a striker or two (xG/90 ~0.3–0.9).
 5. **Predict** — every tab populates, including Goalscorers if you added players.
@@ -198,7 +173,7 @@ src/jackpot/
   poisson.py    matrix.py    markets.py    odds.py      # engine
   strength.py   lambdas.py   players.py   predict.py    # model + orchestration
   metrics.py    backtest.py   national.py   counts.py   # evaluation, tuning, variants
-  data/         base · sample · understat · weather · results · manual
+  data/         base · sample · apifootball · weather · results · manual
   app.py        # Streamlit UI (st.tabs per market)
 tests/          # pytest
 docs/specs/     # design spec + tasks
@@ -224,8 +199,6 @@ Done:
   reusing the full market engine — `docs/specs/2026-06-20-national-variant-design.md`
 - **Corners & cards** count props (independent Poisson, referee factor, manual
   rates) — `docs/specs/2026-06-20-count-props-design.md`
-- **Understat live via Cloudflare cookie** (paste `cf_clearance` + User-Agent) —
-  `docs/specs/2026-06-20-understat-cookie-design.md`
 - **Context factors** (weather, rest, key absences — bounded levers) + **World
   Cup in the app** (Elo model in the dropdown) — `docs/specs/2026-06-20-context-factors-design.md`
 - **Backtest blend-weight tuning** (vs real bookmaker odds) + **match-date weather** (forecast for the kickoff day) — `docs/specs/2026-06-21-blend-tune-match-date-design.md`

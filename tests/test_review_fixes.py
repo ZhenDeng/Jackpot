@@ -6,7 +6,6 @@ import pytest
 from jackpot.matrix import build_score_matrix
 from jackpot.markets import over_under
 from jackpot.strength import TeamRates, estimate_strength
-from jackpot.data.understat import parse_teams_data, compute_league_avg
 
 
 # #2 negative tau must not silently produce negative probabilities
@@ -30,27 +29,6 @@ def test_under_is_direct_sum():
     )
     assert math.isclose(ou["under"], manual_under, abs_tol=1e-12)
     assert math.isclose(ou["over"] + ou["under"], 1.0, abs_tol=1e-9)
-
-
-# #4 league average must be match-weighted, not a flat mean of per-team rates
-def test_compute_league_avg_is_match_weighted():
-    teams = {
-        "A": {"scored_per_game": 2.0, "conceded_per_game": 1.0, "matches": 30},
-        "B": {"scored_per_game": 1.0, "conceded_per_game": 2.0, "matches": 5},
-    }
-    # flat mean would be 1.5; match-weighted = (2.0*30 + 1.0*5)/35 = 1.857...
-    avg = compute_league_avg(teams)
-    assert math.isclose(avg, (2.0 * 30 + 1.0 * 5) / 35, rel_tol=1e-9)
-    assert avg > 1.5  # weighted toward the team with more matches
-
-
-# #10 UTF-8 team names (hex-escaped by Understat) must decode correctly
-def test_parse_teams_data_decodes_utf8_names():
-    # Understat hex-escapes UTF-8 bytes; "Alaves" with accent -> Alav\xc3\xa9s
-    payload = '{"1": {"title": "Alav\\xc3\\xa9s", "history": [{"xG": 1.0, "xGA": 1.0}]}}'
-    html = "var teamsData = JSON.parse('" + payload + "');"
-    parsed = parse_teams_data(html)
-    assert "Alavés" in parsed  # 'Alavés'
 
 
 # #12 negative match count is a data error and must be rejected

@@ -13,7 +13,6 @@ from jackpot.context import compute_adjustments
 from jackpot.data.apifootball import ApiFootballProvider
 from jackpot.data.manual import build_manual_match, rows_to_squad
 from jackpot.data.sample import SampleDataProvider
-from jackpot.data.understat import UnderstatProvider
 from jackpot.data.weather import weather_adjustment, fetch_weather_for_city
 from jackpot.national import predict_international, SAMPLE_ELO
 from jackpot.odds import fair_odds
@@ -21,7 +20,7 @@ from jackpot.predict import predict
 from jackpot.sgm import same_game_multi
 
 DATA_SOURCES = [
-    "Sample (offline)", "Manual entry", "Understat (live)",
+    "Sample (offline)", "Manual entry",
     "API-Football (live)", "World Cup (national)",
 ]
 
@@ -43,7 +42,7 @@ def _row(label: str, rec: dict) -> None:
 
 @st.cache_resource
 def get_provider(name: str):
-    return SampleDataProvider() if name == "Sample (offline)" else UnderstatProvider()
+    return SampleDataProvider()
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -141,19 +140,6 @@ with st.sidebar:
         if source.startswith("Sample"):
             provider = get_provider(source)
             leagues = provider.list_leagues()
-        elif source.startswith("Understat"):
-            # Cloudflare-gated: paste a cf_clearance cookie + matching User-Agent.
-            st.caption(
-                "Understat needs a Cloudflare cookie. Open understat.com → DevTools "
-                "→ Application → Cookies → copy the `cf_clearance` value, and your "
-                "User-Agent (Console: `navigator.userAgent`). See the README."
-            )
-            cf_cookie = st.text_input("Cloudflare cookie (cf_clearance)", type="password")
-            cf_ua = st.text_input("User-Agent (must match the browser)")
-            provider = UnderstatProvider(cf_clearance=cf_cookie or None, user_agent=cf_ua or None)
-            leagues = ["EPL", "La Liga", "Serie A", "Bundesliga", "Ligue 1"]
-            live_ready = bool(cf_cookie)
-            live_hint = "Paste your Cloudflare cookie above to load live teams."
         else:  # API-Football (live)
             st.caption(
                 "API-Football: get a free key (100 req/day) at dashboard.api-football.com, "
@@ -180,8 +166,8 @@ with st.sidebar:
                 teams = provider.list_teams(league)
             except Exception as e:  # pragma: no cover - UI guard
                 st.error(
-                    f"Could not load teams: {e}. Live data can fail (expired credential, "
-                    "quota, or Cloudflare) — use Manual entry as a reliable fallback."
+                    f"Could not load teams: {e}. Live data can fail (expired credential "
+                    "or quota) — use Manual entry as a reliable fallback."
                 )
                 teams = []
         home = st.selectbox("Home team", teams, index=0 if teams else None)
@@ -281,11 +267,6 @@ if go:
         except Exception as e:
             if manual:
                 st.error(f"Failed to build match: {e}")
-            elif source.startswith("Understat"):
-                st.error(
-                    f"Failed to load match data: {e}. Understat is Cloudflare-gated — "
-                    "the cookie may have expired; use Manual entry as a fallback."
-                )
             else:
                 st.error(
                     f"Failed to load match data: {e}. Check your API key / quota, "
