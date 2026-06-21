@@ -41,7 +41,7 @@ def _row(label: str, rec: dict) -> None:
 
 
 @st.cache_resource
-def get_provider(name: str):
+def get_provider():
     return SampleDataProvider()
 
 
@@ -135,11 +135,11 @@ with st.sidebar:
         )
     else:
         provider = None
-        live_ready = True          # Sample is always ready; live sources need a credential
-        live_hint = ""
         if source.startswith("Sample"):
-            provider = get_provider(source)
+            provider = get_provider()
             leagues = provider.list_leagues()
+            live_ready = True          # Sample is always ready (no credential)
+            live_hint = ""
         else:  # API-Football (live)
             st.caption(
                 "API-Football: get a free key (100 req/day) at dashboard.api-football.com, "
