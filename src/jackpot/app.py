@@ -61,14 +61,13 @@ def player_table_inputs():
     Shared by Manual and World Cup modes. Returns (None, None) when unused.
     """
     home_squad = away_squad = None
-    if st.checkbox("Add key players (optional, for goalscorer props)"):
-        st.caption("Leave blank to skip. xG/90 ≈ a striker's chance quality per match.")
-        cols = ["Player", "xG/90", "Minutes", "Penalty"]
-        blank = [
-            {c: ("" if c == "Player" else (90.0 if c == "Minutes" else (0.0 if c == "xG/90" else False)))
-             for c in cols}
-            for _ in range(3)
-        ]
+    if st.checkbox("Add key players (optional, for score/assist props)"):
+        st.caption(
+            "Leave blank to skip. xG/90 ≈ chance quality per match; xA/90 ≈ chances "
+            "created per match (drives 'to score or assist')."
+        )
+        defaults = {"Player": "", "xG/90": 0.0, "xA/90": 0.0, "Minutes": 90.0, "Penalty": False}
+        blank = [dict(defaults) for _ in range(3)]
         st.markdown("Home players")
         home_rows = st.data_editor(blank, num_rows="dynamic", key="home_players")
         st.markdown("Away players")
@@ -307,7 +306,7 @@ if go:
     m = out["markets"]
     tabs = st.tabs(
         ["SGM", "1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance",
-         "Draw No Bet", "Goalscorers", "Team Props"]
+         "Draw No Bet", "Goals & Assists", "Team Props"]
     )
 
     with tabs[0]:
@@ -360,7 +359,10 @@ if go:
         _row(f"{away} (DNB)", m["draw_no_bet"]["away"])
 
     with tabs[7]:
-        st.caption("Anytime goalscorer — probability a player scores at least once.")
+        st.caption(
+            "To score or assist — probability a player scores or assists at least "
+            "once (assists from the xA/90 column). Anytime-scorer % shown alongside."
+        )
         pp = m["player_props"]
         gc1, gc2 = st.columns(2)
         for col, side, team_name in ((gc1, "home", home), (gc2, "away", away)):
@@ -373,8 +375,9 @@ if go:
                 for e in entries:
                     two = f"  ·  2+: {_pct(e['p_2plus'])}" if e["p_2plus"] > 0.01 else ""
                     st.write(
-                        f"{e['player']} — {_pct(e['p_score'])}  "
-                        f"(odds {_odds(e['fair_odds'])}){two}"
+                        f"{e['player']} — {_pct(e['p_involve'])} to score or assist  "
+                        f"(odds {_odds(e['fair_odds_involve'])})  ·  "
+                        f"scorer {_pct(e['p_score'])}{two}"
                     )
 
     with tabs[8]:

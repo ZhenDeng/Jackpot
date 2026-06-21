@@ -44,6 +44,17 @@ def test_player_props_from_squads():
     assert len(pp["home"]) == 2
     assert pp["away"] == []                       # no away squad -> graceful
     assert pp["home"][0]["player"] == "Striker"
+    top = pp["home"][0]
+    assert set(top) == {
+        "player", "p_involve", "fair_odds_involve", "p_score", "p_2plus", "fair_odds"
+    }
+
+
+def test_assist_rate_raises_involvement_above_scorer():
+    # a creator with assists is more likely to be involved than to score alone
+    creator = [PlayerForm("Playmaker", xg_per90=0.2, xa_per90=0.6, expected_minutes=90)]
+    pp = _out(home_squad=creator)["markets"]["player_props"]["home"]
+    assert pp[0]["p_involve"] > pp[0]["p_score"]
 
 
 def test_market_odds_enable_value_flag():

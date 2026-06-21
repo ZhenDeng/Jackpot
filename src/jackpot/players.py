@@ -7,10 +7,16 @@ goals are then treated as Poisson(lambda_i).
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
+
+from .odds import fair_odds
 
 # fraction of team goals modelled as penalties, assigned to the penalty taker(s)
 PENALTY_FRACTION = 0.08
+
+# fraction of a team's goals that are assisted — sizes the assist pool shared out
+# across creators (most goals have an assister; solo efforts and penalties don't).
+ASSIST_FRACTION = 0.75
 
 # entry = (player_name, raw_output, is_penalty_taker)
 Entry = Tuple[str, float, bool]
@@ -31,6 +37,18 @@ def p_score(lam: float) -> float:
 def p_two_plus(lam: float) -> float:
     """P(player scores two or more)."""
     return 1.0 - math.exp(-lam) * (1.0 + lam)
+
+
+def p_involvement(goal_lambda: float, assist_lambda: float) -> float:
+    """P(player scores OR assists at least once).
+
+    Goals and assists are treated as independent Poisson processes, so
+    P(neither) = e^-goal * e^-assist and involvement = 1 - that. With
+    ``assist_lambda == 0`` this is exactly the anytime-scorer probability.
+    """
+    if goal_lambda < 0 or assist_lambda < 0:
+        raise ValueError("goal_lambda and assist_lambda must be non-negative")
+    return 1.0 - math.exp(-(goal_lambda + assist_lambda))
 
 
 def allocate_lambdas(
@@ -77,3 +95,60 @@ def allocate_lambdas(
             lam += pen_each
         result[name] = lam
     return result
+
+
+def build_player_props(
+    squad: Optional[Sequence],
+    team_lambda: float,
+    top_n: int,
+    assist_fraction: float = ASSIST_FRACTION,
+) -> List[dict]:
+    """Per-player props for a team, headlined by goal involvement (score or assist).
+
+    Goals are allocated from ``team_lambda`` (with the penalty boost); assists are
+    allocated from a separate ``team_lambda * assist_fraction`` pool by xA/90 share
+    (no penalty boost — penalties aren't assisted). Each player's involvement is
+    ``p_involvement(goal_lambda, assist_lambda)``. Returns the ``top_n`` most likely
+    to be involved; ``[]`` when no squad / no attacking output is available.
+    """
+    if not squad:
+        return []
+
+    goal_entries = [
+        (p.name, raw_output(p.xg_per90, p.expected_minutes), p.penalty_taker)
+        for p in squad
+    ]
+    assist_entries = [
+        (p.name, raw_output(p.xa_per90, p.expected_minutes), False)
+        for p in squad
+    ]
+    goal_lams = allocate_lambdas(goal_entries, team_lambda)
+    assist_lams = allocate_lambdas(
+        assist_entries, team_lambda * assist_fraction, penalty_fraction=0.0
+    )
+    if not goal_lams and not assist_lams:        # no attacking output at all
+        return []
+
+    names: List[str] = []
+    seen = set()
+    for p in squad:                              # stable, de-duplicated order
+        if p.name not in seen:
+            seen.add(p.name)
+            names.append(p.name)
+
+    props = []
+    for name in names:
+        g = goal_lams.get(name, 0.0)
+        a = assist_lams.get(name, 0.0)
+        involve = p_involvement(g, a)
+        sc = p_score(g)
+        props.append({
+            "player": name,
+            "p_involve": involve,
+            "fair_odds_involve": fair_odds(involve),
+            "p_score": sc,
+            "p_2plus": p_two_plus(g),
+            "fair_odds": fair_odds(sc),
+        })
+    props.sort(key=lambda e: e["p_involve"], reverse=True)
+    return props[:top_n]

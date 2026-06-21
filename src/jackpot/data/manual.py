@@ -46,6 +46,7 @@ def rows_to_squad(rows) -> Optional[List[PlayerForm]]:
             PlayerForm(
                 name=name,
                 xg_per90=safe_float(r.get("xG/90"), 0.0),
+                xa_per90=safe_float(r.get("xA/90"), 0.0),
                 expected_minutes=safe_float(r.get("Minutes"), 90.0),
                 penalty_taker=bool(r.get("Penalty", False)),
             )

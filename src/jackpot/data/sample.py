@@ -31,32 +31,32 @@ _LEAGUES: Dict[str, Dict[str, Dict[str, float]]] = {
 # rough league average goals per team per game
 _LEAGUE_AVG: Dict[str, float] = {"EPL": 1.45, "La Liga": 1.35}
 
-# illustrative squads (xg_per90, expected_minutes, penalty_taker) for the demo
+# illustrative squads (xg_per90, expected_minutes, penalty_taker, xa_per90) for the demo
 _SQUADS: Dict[str, List[PlayerForm]] = {
     "Manchester City": [
-        PlayerForm("E. Haaland", 0.95, 88, penalty_taker=True),
-        PlayerForm("P. Foden", 0.45, 82),
-        PlayerForm("B. Silva", 0.30, 80),
-        PlayerForm("J. Alvarez", 0.40, 55),
-        PlayerForm("K. De Bruyne", 0.35, 70),
+        PlayerForm("E. Haaland", 0.95, 88, penalty_taker=True, xa_per90=0.15),
+        PlayerForm("P. Foden", 0.45, 82, xa_per90=0.30),
+        PlayerForm("B. Silva", 0.30, 80, xa_per90=0.30),
+        PlayerForm("J. Alvarez", 0.40, 55, xa_per90=0.20),
+        PlayerForm("K. De Bruyne", 0.35, 70, xa_per90=0.55),
     ],
     "Burnley": [
-        PlayerForm("L. Foster", 0.35, 80, penalty_taker=True),
-        PlayerForm("J. Rodriguez", 0.25, 72),
-        PlayerForm("W. Odobert", 0.20, 75),
-        PlayerForm("D. Brownhill", 0.12, 85),
+        PlayerForm("L. Foster", 0.35, 80, penalty_taker=True, xa_per90=0.12),
+        PlayerForm("J. Rodriguez", 0.25, 72, xa_per90=0.15),
+        PlayerForm("W. Odobert", 0.20, 75, xa_per90=0.18),
+        PlayerForm("D. Brownhill", 0.12, 85, xa_per90=0.20),
     ],
     "Arsenal": [
-        PlayerForm("B. Saka", 0.50, 85, penalty_taker=True),
-        PlayerForm("K. Havertz", 0.45, 80),
-        PlayerForm("G. Martinelli", 0.40, 78),
-        PlayerForm("M. Odegaard", 0.35, 82),
+        PlayerForm("B. Saka", 0.50, 85, penalty_taker=True, xa_per90=0.35),
+        PlayerForm("K. Havertz", 0.45, 80, xa_per90=0.20),
+        PlayerForm("G. Martinelli", 0.40, 78, xa_per90=0.25),
+        PlayerForm("M. Odegaard", 0.35, 82, xa_per90=0.40),
     ],
     "Real Madrid": [
-        PlayerForm("J. Bellingham", 0.55, 85, penalty_taker=True),
-        PlayerForm("Vinicius Jr", 0.55, 84),
-        PlayerForm("Rodrygo", 0.40, 78),
-        PlayerForm("F. Valverde", 0.25, 86),
+        PlayerForm("J. Bellingham", 0.55, 85, penalty_taker=True, xa_per90=0.30),
+        PlayerForm("Vinicius Jr", 0.55, 84, xa_per90=0.35),
+        PlayerForm("Rodrygo", 0.40, 78, xa_per90=0.25),
+        PlayerForm("F. Valverde", 0.25, 86, xa_per90=0.30),
     ],
 }
 

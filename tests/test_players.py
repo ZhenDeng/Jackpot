@@ -4,8 +4,10 @@ from jackpot.players import (
     raw_output,
     p_score,
     p_two_plus,
+    p_involvement,
     allocate_lambdas,
     PENALTY_FRACTION,
+    ASSIST_FRACTION,
 )
 
 
@@ -25,6 +27,33 @@ def test_p_two_plus_formula():
     assert math.isclose(p_two_plus(lam), 1 - math.exp(-lam) * (1 + lam), rel_tol=1e-12)
     # 2+ is always less likely than 1+
     assert p_two_plus(lam) < p_score(lam)
+
+
+def test_p_involvement_combines_goal_and_assist():
+    g, a = 0.4, 0.3
+    assert math.isclose(p_involvement(g, a), 1 - math.exp(-(g + a)), rel_tol=1e-12)
+
+
+def test_p_involvement_reduces_to_scorer_without_assists():
+    assert math.isclose(p_involvement(0.5, 0.0), p_score(0.5), rel_tol=1e-12)
+
+
+def test_p_involvement_at_least_anytime_scorer():
+    # adding an assist chance can only raise the chance of being involved
+    assert p_involvement(0.5, 0.3) > p_score(0.5)
+
+
+def test_p_involvement_rejects_negative():
+    for bad in ((-0.1, 0.0), (0.0, -0.1)):
+        try:
+            p_involvement(*bad)
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
+def test_assist_fraction_is_a_sensible_share():
+    assert 0.0 < ASSIST_FRACTION <= 1.0
 
 
 def test_allocate_conserves_team_lambda_without_penalty_taker():

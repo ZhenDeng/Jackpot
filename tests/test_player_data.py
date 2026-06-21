@@ -8,9 +8,10 @@ def test_team_form_squad_defaults_none():
 
 
 def test_player_form_fields():
-    p = PlayerForm("Haaland", xg_per90=0.9, expected_minutes=88.0, penalty_taker=True)
+    p = PlayerForm("Haaland", xg_per90=0.9, xa_per90=0.2, expected_minutes=88.0, penalty_taker=True)
     assert p.name == "Haaland"
     assert p.xg_per90 == 0.9
+    assert p.xa_per90 == 0.2
     assert p.expected_minutes == 88.0
     assert p.penalty_taker is True
 
@@ -19,6 +20,11 @@ def test_player_form_minutes_default():
     p = PlayerForm("Sub", xg_per90=0.3)
     assert p.expected_minutes == 90.0
     assert p.penalty_taker is False
+
+
+def test_player_form_assist_default():
+    p = PlayerForm("Sub", xg_per90=0.3)
+    assert p.xa_per90 == 0.0
 
 
 def test_sample_provider_attaches_squads():

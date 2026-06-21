@@ -19,6 +19,7 @@ class PlayerForm:
     xg_per90: float
     expected_minutes: float = 90.0
     penalty_taker: bool = False
+    xa_per90: float = 0.0          # expected assists / 90 (drives "score or assist")
 
 
 @dataclass

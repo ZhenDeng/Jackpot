@@ -98,7 +98,7 @@ def test_safe_float_keeps_zero_but_defaults_blanks():
 
 def test_rows_to_squad_coerces_and_skips_blanks():
     rows = [
-        {"Player": "Star", "xG/90": "0.8", "Minutes": "88", "Penalty": True},
+        {"Player": "Star", "xG/90": "0.8", "xA/90": "0.3", "Minutes": "88", "Penalty": True},
         {"Player": "", "xG/90": "0.4", "Minutes": "80", "Penalty": False},   # blank name skipped
         {"Player": "Sub", "xG/90": "abc", "Minutes": "", "Penalty": False},  # bad values -> safe defaults
     ]
@@ -107,8 +107,10 @@ def test_rows_to_squad_coerces_and_skips_blanks():
     assert names == ["Star", "Sub"]
     star = squad[0]
     assert isinstance(star, PlayerForm) and star.penalty_taker is True
+    assert star.xa_per90 == 0.3
     sub = squad[1]
     assert sub.xg_per90 == 0.0 and sub.expected_minutes == 90.0  # safe defaults, no crash
+    assert sub.xa_per90 == 0.0  # missing xA column -> safe default
 
 
 def test_rows_to_squad_empty_returns_none():
