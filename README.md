@@ -56,9 +56,24 @@ In the sidebar pick a **data source**:
   an API key (see below).
 - **Understat (live)** — ⚠️ Cloudflare-gated. Works **only** if you paste a
   `cf_clearance` cookie from your browser (see below). Best-effort.
+- **World Cup (national)** — predict an international match from **Elo ratings** (no
+  command line needed). Enter the two nations and their Elo (from eloratings.net);
+  World Cup = neutral venue by default.
 
-Then optionally enter bookmaker odds (value flags + blending) or kickoff weather,
-and hit **Predict**.
+Then optionally enter bookmaker odds (value flags + blending), kickoff weather, or
+**Advanced factors** (see below), and hit **Predict**.
+
+### Advanced factors (optional, all modes)
+
+Real match context can nudge the prediction — entered by you, never invented, and
+**bounded** so no single factor dominates (combined multiplier clamped to 0.70–1.30):
+
+- **Weather** — wind/rain lowers both sides' expected goals.
+- **Rest days** — a short-rested side scores slightly less.
+- **Key attacker out** — that team scores less.
+- **Key defender out** — the *opponent* scores more.
+
+Off by default (no effect). The resulting goal multipliers are shown before you predict.
 
 ### Using API-Football (recommended live data)
 
@@ -142,6 +157,9 @@ PYTHONPATH=src .venv/bin/python -m jackpot.national "TeamA" "TeamB" 2000 1700 --
 World Cup matches are treated as **neutral** venues by default. A small sample Elo
 table is bundled; pass explicit ratings (from eloratings.net) for any nation.
 
+This is also available in the **app** without the command line — pick
+**Data source → World Cup (national)**.
+
 ## Corners & cards (count props)
 
 Corners and cards are separate count markets (their own Poisson, not from the
@@ -174,7 +192,10 @@ docs/specs/     # design spec + tasks
 - More player props (shots, assists)
 - API-Football enrichments: per-team xG, player props, corners/cards, odds
   (v1 is goals-based team form)
-- Streamlit tabs for the national-team variant and count props
+- Auto-lineup modelling (aggregate a full starting XI's xG — needs lineup data;
+  the "key player out" toggles are the current pragmatic version)
+- Streamlit tab for count props (corners/cards)
+- Calibrate the context-factor magnitudes via the backtest harness
 
 Done:
 - **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
@@ -188,6 +209,8 @@ Done:
   rates) — `docs/specs/2026-06-20-count-props-design.md`
 - **Understat live via Cloudflare cookie** (paste `cf_clearance` + User-Agent) —
   `docs/specs/2026-06-20-understat-cookie-design.md`
+- **Context factors** (weather, rest, key absences — bounded levers) + **World
+  Cup in the app** (Elo model in the dropdown) — `docs/specs/2026-06-20-context-factors-design.md`
 - **API-Football integration** (official API, free tier, top leagues + World Cup,
   goals-based team form) — `docs/specs/2026-06-20-apifootball-design.md`
 

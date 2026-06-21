@@ -6,15 +6,20 @@ from __future__ import annotations
 
 import streamlit as st
 
+from jackpot.context import compute_adjustments
 from jackpot.data.apifootball import ApiFootballProvider
 from jackpot.data.manual import build_manual_match, rows_to_squad
 from jackpot.data.sample import SampleDataProvider
 from jackpot.data.understat import UnderstatProvider
 from jackpot.data.weather import weather_adjustment
+from jackpot.national import predict_international, SAMPLE_ELO
 from jackpot.odds import fair_odds
 from jackpot.predict import predict
 
-DATA_SOURCES = ["Sample (offline)", "Manual entry", "Understat (live)", "API-Football (live)"]
+DATA_SOURCES = [
+    "Sample (offline)", "Manual entry", "Understat (live)",
+    "API-Football (live)", "World Cup (national)",
+]
 
 st.set_page_config(page_title="Jackpot — Soccer Predictions", page_icon="⚽", layout="centered")
 
@@ -45,12 +50,27 @@ with st.sidebar:
     st.header("Match")
     source = st.radio("Data source", DATA_SOURCES)
     manual = source == "Manual entry"
+    national = source == "World Cup (national)"
 
     # state carried into the prediction section
     provider = league = home = away = None
     man_inputs = {}
+    nat_inputs = {}
 
-    if manual:
+    if national:
+        st.caption(
+            "National-team Elo model (World Cup = neutral venue). Get current Elo "
+            "ratings from eloratings.net — e.g. Belgium ~1850, Iran ~1760."
+        )
+        home = st.text_input("Home nation", "Belgium")
+        home_elo = st.number_input("Home Elo", 1000, 2400, int(SAMPLE_ELO.get("Belgium", 1800)))
+        away = st.text_input("Away nation", "Iran")
+        away_elo = st.number_input("Away Elo", 1000, 2400, 1760)
+        neutral = st.checkbox("Neutral venue (World Cup)", value=True)
+        nat_inputs = dict(
+            home=home, away=away, elo_home=home_elo, elo_away=away_elo, neutral=neutral,
+        )
+    elif manual:
         st.caption("Type a real fixture's recent form (xG per game preferred).")
         league_avg = st.number_input("League avg goals / team / game", 0.1, 5.0, 1.45, 0.05)
         hcol, acol = st.columns(2)
@@ -158,52 +178,77 @@ with st.sidebar:
         weather_mult = weather_adjustment(wind_kph=wind_kph, rain_mm=rain_mm)
         st.caption(f"Goal multiplier applied to both sides: ×{weather_mult:.3f}")
 
+    st.subheader("Advanced factors (optional)")
+    st.caption("Real context you supply — bounded, never invented. Off = no effect.")
+    with st.expander("Rest & key absences"):
+        rc1, rc2 = st.columns(2)
+        home_rest = rc1.number_input("Home rest days", 0, 14, 7)
+        away_rest = rc2.number_input("Away rest days", 0, 14, 7)
+        home_att_out = rc1.checkbox("Home: key attacker out")
+        away_att_out = rc2.checkbox("Away: key attacker out")
+        home_def_out = rc1.checkbox("Home: key defender out")
+        away_def_out = rc2.checkbox("Away: key defender out")
+    home_adjust, away_adjust = compute_adjustments(
+        weather_mult=weather_mult,
+        home_rest=home_rest, away_rest=away_rest,
+        home_attacker_out=home_att_out, away_attacker_out=away_att_out,
+        home_defender_out=home_def_out, away_defender_out=away_def_out,
+    )
+    if (home_adjust, away_adjust) != (1.0, 1.0):
+        st.caption(f"Goal multipliers — home ×{home_adjust:.3f}, away ×{away_adjust:.3f}")
+
     go = st.button("Predict", type="primary", use_container_width=True)
 
 
 # ---- prediction ----
 if go:
     if not home or not away or str(home).strip() == str(away).strip():
-        st.warning("Enter two different teams." if manual else "Pick two different teams.")
+        st.warning("Enter two different teams.")
         st.stop()
-    if not manual and provider is None:
+    if not manual and not national and provider is None:
         st.error("Enter your live-source credential first.")
         st.stop()
-    try:
-        if manual:
-            match = build_manual_match(**man_inputs)
-        else:
-            match = provider.get_match(home, away, league)
-    except ValueError as e:
-        st.error(f"Invalid input: {e}")
-        st.stop()
-    except Exception as e:
-        if manual:
-            st.error(f"Failed to build match: {e}")
-        elif source.startswith("Understat"):
-            st.error(
-                f"Failed to load match data: {e}. Understat is Cloudflare-gated — "
-                "the cookie may have expired; use Manual entry as a fallback."
-            )
-        else:
-            st.error(
-                f"Failed to load match data: {e}. Check your API key / quota, "
-                "or use Manual entry as a fallback."
-            )
-        st.stop()
 
-    if market_odds is not None:
-        match.context.market_odds = market_odds
-    if weather_mult != 1.0:
-        match.context.home_adjust = weather_mult
-        match.context.away_adjust = weather_mult
+    if national:
+        # Elo-driven national-team path (context factors applied to the Elo lambdas)
+        out = predict_international(
+            **nat_inputs,
+            market_odds=market_odds,
+            blend_weight=blend_weight,
+            home_adjust=home_adjust,
+            away_adjust=away_adjust,
+        )
+    else:
+        try:
+            match = build_manual_match(**man_inputs) if manual else provider.get_match(home, away, league)
+        except ValueError as e:
+            st.error(f"Invalid input: {e}")
+            st.stop()
+        except Exception as e:
+            if manual:
+                st.error(f"Failed to build match: {e}")
+            elif source.startswith("Understat"):
+                st.error(
+                    f"Failed to load match data: {e}. Understat is Cloudflare-gated — "
+                    "the cookie may have expired; use Manual entry as a fallback."
+                )
+            else:
+                st.error(
+                    f"Failed to load match data: {e}. Check your API key / quota, "
+                    "or use Manual entry as a fallback."
+                )
+            st.stop()
 
-    out = predict(match, blend_weight=blend_weight)
+        if market_odds is not None:
+            match.context.market_odds = market_odds
+        match.context.home_adjust = home_adjust
+        match.context.away_adjust = away_adjust
+        out = predict(match, blend_weight=blend_weight)
 
     c1, c2, c3 = st.columns(3)
     c1.metric("Expected goals — home", f"{out['lambda_home']:.2f}")
     c2.metric("Expected goals — away", f"{out['lambda_away']:.2f}")
-    c3.metric("Confidence", out["confidence"])
+    c3.metric("Confidence", out.get("confidence", "—"))
 
     m = out["markets"]
     tabs = st.tabs(
