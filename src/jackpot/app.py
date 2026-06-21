@@ -18,6 +18,7 @@ from jackpot.data.weather import weather_adjustment, fetch_weather_for_city
 from jackpot.national import predict_international, SAMPLE_ELO
 from jackpot.odds import fair_odds
 from jackpot.predict import predict
+from jackpot.sgm import same_game_multi
 
 DATA_SOURCES = [
     "Sample (offline)", "Manual entry", "Understat (live)",
@@ -305,39 +306,60 @@ if go:
 
     m = out["markets"]
     tabs = st.tabs(
-        ["1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance", "Draw No Bet",
-         "Goalscorers", "Team Props"]
+        ["SGM", "1X2", "Over/Under", "BTTS", "Correct Score", "Double Chance",
+         "Draw No Bet", "Goalscorers", "Team Props"]
     )
 
     with tabs[0]:
+        st.caption(
+            "Same Game Multi — the highest-confidence legs from this match combined "
+            "into one bet (one pick per market so legs don't overlap)."
+        )
+        sgm = same_game_multi(m, home, away, n=4)
+        for leg in sgm["legs"]:
+            st.write(
+                f"**{leg['market']}: {leg['selection']}** — {_pct(leg['prob'])}  "
+                f"·  fair odds {_odds(leg['fair_odds'])}"
+            )
+        st.divider()
+        sc1, sc2 = st.columns(2)
+        sc1.metric("Combined probability", _pct(sgm["combined_prob"]))
+        sc2.metric("Combined fair odds", _odds(sgm["combined_fair_odds"]))
+        st.caption(
+            "Legs in one game are correlated, so the combined probability "
+            "(multiplied as if independent) is an optimistic estimate — treat the "
+            "fair odds as a floor, and expect a real SGM price to be shorter."
+        )
+
+    with tabs[1]:
         _row(f"{home} win", m["match_result"]["home"])
         _row("Draw", m["match_result"]["draw"])
         _row(f"{away} win", m["match_result"]["away"])
 
-    with tabs[1]:
+    with tabs[2]:
         for line, rec in m["over_under"].items():
             _row(f"Over {line}", rec["over"])
             _row(f"Under {line}", rec["under"])
             st.divider()
 
-    with tabs[2]:
+    with tabs[3]:
         _row("Both teams to score — Yes", m["btts"]["yes"])
         _row("Both teams to score — No", m["btts"]["no"])
 
-    with tabs[3]:
+    with tabs[4]:
         for h, a, p in m["correct_score"]:
             st.write(f"**{h}–{a}** — {_pct(p)}  ·  fair odds {_odds(fair_odds(p))}")
 
-    with tabs[4]:
+    with tabs[5]:
         _row(f"{home} or Draw (1X)", m["double_chance"]["1X"])
         _row(f"{home} or {away} (12)", m["double_chance"]["12"])
         _row(f"Draw or {away} (X2)", m["double_chance"]["X2"])
 
-    with tabs[5]:
+    with tabs[6]:
         _row(f"{home} (DNB)", m["draw_no_bet"]["home"])
         _row(f"{away} (DNB)", m["draw_no_bet"]["away"])
 
-    with tabs[6]:
+    with tabs[7]:
         st.caption("Anytime goalscorer — probability a player scores at least once.")
         pp = m["player_props"]
         gc1, gc2 = st.columns(2)
@@ -355,7 +377,7 @@ if go:
                         f"(odds {_odds(e['fair_odds'])}){two}"
                     )
 
-    with tabs[7]:
+    with tabs[8]:
         st.markdown("**Team Total Goals**")
         for line, sides in m["team_total_goals"].items():
             _row(f"{home} Over {line}", sides["home"]["over"])

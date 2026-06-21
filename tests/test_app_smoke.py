@@ -48,6 +48,21 @@ def test_app_produces_prediction_for_two_teams():
     assert "fair odds" in body
 
 
+def test_app_renders_same_game_multi():
+    at = _fresh()
+    at.selectbox[1].set_value("Manchester City")
+    at.selectbox[2].set_value("Burnley")
+    at.run()
+    at.button[0].click().run()
+    assert not at.exception
+    captions = " ".join(c.value for c in at.caption)
+    assert "Same Game Multi" in captions
+    # combined SGM price is surfaced as metrics
+    labels = [m.label for m in at.metric]
+    assert "Combined probability" in labels
+    assert "Combined fair odds" in labels
+
+
 def test_app_renders_goalscorer_props():
     at = _fresh()
     at.selectbox[1].set_value("Manchester City")

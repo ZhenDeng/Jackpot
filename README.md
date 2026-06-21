@@ -3,7 +3,9 @@
 Predict every item in a bet **Tab** — Match Result (1X2), Over/Under, BTTS,
 Correct Score, Double Chance, Draw No Bet, **Anytime Goalscorer** player props, and
 **team props** (team total goals, clean sheet, win to nil, winning margin) — for a
-soccer match, from a single consistent goal model.
+soccer match, from a single consistent goal model. A **Same Game Multi (SGM)** tab
+combines the four highest-confidence legs (one pick per market) into one bet with a
+combined fair price.
 
 ## How it works
 
