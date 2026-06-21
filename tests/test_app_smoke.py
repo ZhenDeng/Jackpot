@@ -99,6 +99,41 @@ def test_app_apifootball_mode_shows_key_input_without_network():
     assert "API-Football key" in infos
 
 
+def test_apifootball_league_dropdown_excludes_world_cup():
+    # the World Cup has no league table -> standings can't represent it; it must
+    # NOT be offered as an API-Football league (use the World Cup (national) mode).
+    at = _fresh()
+    at.radio[0].set_value("API-Football (live)").run()
+    league_box = next(s for s in at.selectbox if "EPL" in (s.options or []))
+    assert "World Cup" not in league_box.options
+    assert "EPL" in league_box.options and "La Liga" in league_box.options
+
+
+def test_app_world_cup_mode_produces_prediction():
+    at = _fresh()
+    at.radio[0].set_value("World Cup (national)").run()
+    at.button[0].click().run()
+    assert not at.exception
+    assert any("Expected goals" in m.label for m in at.metric)
+    body = " ".join(m.value for m in at.markdown)
+    assert "Belgium" in body and "Iran" in body  # default nations in the 1X2 tab
+
+
+def test_app_advanced_factor_lowers_expected_goals():
+    def home_xg(attacker_out: bool) -> float:
+        at = _fresh()
+        if attacker_out:
+            box = next(c for c in at.checkbox if c.label == "Home: key attacker out")
+            box.set_value(True).run()
+        at.button[0].click().run()
+        assert not at.exception
+        metric = next(m for m in at.metric if m.label == "Expected goals — home")
+        return float(metric.value)
+
+    # toggling "home key attacker out" must reduce home expected goals
+    assert home_xg(attacker_out=True) < home_xg(attacker_out=False)
+
+
 def test_app_manual_entry_produces_prediction():
     at = _fresh()
     # switch data source to Manual entry; defaults are a valid fixture
