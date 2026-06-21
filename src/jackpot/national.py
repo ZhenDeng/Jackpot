@@ -35,6 +35,7 @@ def elo_confidence(elo_home: float, elo_away: float) -> str:
         return "Medium"
     return "Low"
 
+
 # Illustrative national-team Elo ratings (eloratings.net style; not live).
 SAMPLE_ELO = {
     "Brazil": 2030,
