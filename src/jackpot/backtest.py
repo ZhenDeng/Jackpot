@@ -92,7 +92,11 @@ def run_backtest(
         if len(h_hist) >= min_history and len(a_hist) >= min_history:
             home = TeamForm(m.home, _mean(h_hist, 0), _mean(h_hist, 1), len(h_hist), False)
             away = TeamForm(m.away, _mean(a_hist, 0), _mean(a_hist, 1), len(a_hist), False)
-            md = MatchData(home, away, MatchContext(league_avg_goals=league_avg))
+            # attach the match's bookmaker odds so blend_weight can actually engage
+            odds = None
+            if m.home_odds is not None and m.draw_odds is not None and m.away_odds is not None:
+                odds = {"home": m.home_odds, "draw": m.draw_odds, "away": m.away_odds}
+            md = MatchData(home, away, MatchContext(league_avg_goals=league_avg, market_odds=odds))
             mr = predict(md, **params)["markets"]["match_result"]
             probs = [mr["home"]["prob"], mr["draw"]["prob"], mr["away"]["prob"]]
             records.append((probs, outcome_index(m.home_goals, m.away_goals)))
@@ -137,6 +141,17 @@ _TUNE_GRID = {
     "shrink_k": [3.0, 5.0, 8.0],
 }
 
+# model-vs-market blend weights to add to the grid when the data carries odds
+_BLEND_WEIGHTS = [0.0, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0]
+
+
+def has_odds(matches) -> bool:
+    """True if any match carries a complete bookmaker odds triple."""
+    return any(
+        m.home_odds is not None and m.draw_odds is not None and m.away_odds is not None
+        for m in matches
+    )
+
 
 def format_report(result: BacktestResult, label: str = "Backtest") -> str:
     """Render a metrics + calibration report as plain text."""
@@ -170,14 +185,23 @@ def main(argv: Sequence[str] = ()) -> int:
         source = "bundled sample season"
 
     baseline = run_backtest(matches)
-    print(f"Source: {source}  ({len(matches)} matches)\n")
+    odds_present = has_odds(matches)
+    print(f"Source: {source}  ({len(matches)} matches, "
+          f"odds: {'yes' if odds_present else 'no'})\n")
     print(format_report(baseline, "Default weights"))
 
-    runs = tune(matches, _TUNE_GRID)
+    grid = dict(_TUNE_GRID)
+    if odds_present:
+        grid["blend_weight"] = _BLEND_WEIGHTS   # tune model-vs-market only with odds
+    runs = tune(matches, grid)
     best = runs[0]
     print("\n" + format_report(best["result"], "Best tuned weights"))
     print(f"\nbest params: {best['params']}  "
           f"(RPS {best['result'].avg_rps:.4f} vs default {baseline.avg_rps:.4f})")
+    if odds_present:
+        print(f"best model-vs-market blend weight: {best['params'].get('blend_weight')}")
+    else:
+        print("(add a CSV with bookmaker odds columns to tune the blend weight)")
     return 0
 
 

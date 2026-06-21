@@ -80,7 +80,7 @@ def test_fetch_weather_for_city_composes_geocode_and_weather():
         geo_calls.append(name)
         return geo
 
-    def fake_wx(lat, lon):
+    def fake_wx(lat, lon, date=None):
         wx_calls.append((lat, lon))
         return wx
 

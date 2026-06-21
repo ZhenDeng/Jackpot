@@ -144,6 +144,11 @@ def test_app_weather_auto_mode_renders_city_input_without_network():
     assert any("Match city" in ti.label for ti in at.text_input)
 
 
+def test_app_has_match_date_input():
+    at = _fresh()
+    assert any("Match date" in d.label for d in at.date_input)
+
+
 def test_app_manual_weather_still_works():
     at = _fresh()
     weather_radio = next(r for r in at.radio if "Manual" in r.options)

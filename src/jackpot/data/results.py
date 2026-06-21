@@ -9,7 +9,7 @@ import csv
 import datetime
 import io
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 def normalize_date(s: str) -> str:
@@ -35,6 +35,29 @@ class HistoricalMatch:
     away: str
     home_goals: int
     away_goals: int
+    home_odds: Optional[float] = None   # decimal odds (margin not stripped)
+    draw_odds: Optional[float] = None
+    away_odds: Optional[float] = None
+
+
+# bookmaker odds column triples to try, in preference order
+_ODDS_COLUMNS = (
+    ("B365H", "B365D", "B365A"),   # Bet365
+    ("PSH", "PSD", "PSA"),         # Pinnacle
+    ("AvgH", "AvgD", "AvgA"),      # market average
+)
+
+
+def _parse_odds(row: dict):
+    """Return (home, draw, away) decimal odds from the first complete triple, or Nones."""
+    for h, d, a in _ODDS_COLUMNS:
+        try:
+            oh, od, oa = float(row[h]), float(row[d]), float(row[a])
+            if oh > 1 and od > 1 and oa > 1:
+                return oh, od, oa
+        except (KeyError, ValueError, TypeError):
+            continue
+    return None, None, None
 
 
 def load_results_csv(text: str) -> List[HistoricalMatch]:
@@ -49,6 +72,7 @@ def load_results_csv(text: str) -> List[HistoricalMatch]:
             home, away = row["HomeTeam"].strip(), row["AwayTeam"].strip()
             if not home or not away:
                 continue  # phantom-team guard
+            oh, od, oa = _parse_odds(row)
             out.append(
                 HistoricalMatch(
                     date=normalize_date(row.get("Date", "")),
@@ -57,6 +81,7 @@ def load_results_csv(text: str) -> List[HistoricalMatch]:
                     away=away,
                     home_goals=int(row["FTHG"]),
                     away_goals=int(row["FTAG"]),
+                    home_odds=oh, draw_odds=od, away_odds=oa,
                 )
             )
         except (KeyError, ValueError, TypeError, AttributeError):
