@@ -97,11 +97,32 @@ def _http_json(url: str, params: Dict) -> Dict:
     return resp.json()
 
 
+def parse_open_meteo_daily(payload: Dict) -> Tuple[float, float]:
+    """Pull (wind_kph, rain_mm) from an Open-Meteo *daily forecast* response.
+
+    Uses the day's max wind and total precipitation (already km/h and mm). Null/missing
+    readings default to 0.0 (calm/dry) — conservative, can only soften the penalty.
+    """
+    daily = payload.get("daily") or {}
+    winds = daily.get("wind_speed_10m_max")
+    rains = daily.get("precipitation_sum")
+    if not winds or not rains:
+        raise ValueError("no daily forecast in response")
+    return float(winds[0] or 0.0), float(rains[0] or 0.0)
+
+
 def geocode_city(name: str) -> Dict:
     return _http_json(_GEOCODE_URL, {"name": name, "count": 1})
 
 
-def fetch_open_meteo(lat: float, lon: float) -> Dict:
+def fetch_open_meteo(lat: float, lon: float, date: Optional[str] = None) -> Dict:
+    """Current weather (``date`` None) or the daily forecast for an ISO ``date``."""
+    if date:
+        return _http_json(_FORECAST_URL, {
+            "latitude": lat, "longitude": lon,
+            "daily": "wind_speed_10m_max,precipitation_sum",
+            "start_date": date, "end_date": date, "timezone": "auto",
+        })
     return _http_json(
         _FORECAST_URL,
         {"latitude": lat, "longitude": lon, "current": "wind_speed_10m,precipitation"},
@@ -110,13 +131,16 @@ def fetch_open_meteo(lat: float, lon: float) -> Dict:
 
 def fetch_weather_for_city(
     city: str,
+    date: Optional[str] = None,
     _geocode_fetcher: Callable[[str], Dict] = geocode_city,
-    _weather_fetcher: Callable[[float, float], Dict] = fetch_open_meteo,
+    _weather_fetcher: Callable[..., Dict] = fetch_open_meteo,
 ) -> Dict[str, object]:
-    """Geocode ``city`` then fetch its current weather → a single info dict.
+    """Geocode ``city`` then fetch weather → a single info dict.
 
-    The two fetchers are injectable so composition is unit-testable without network.
+    With ``date`` (ISO), uses that day's forecast; otherwise current conditions. The
+    fetchers are injectable so composition is unit-testable without network.
     """
     loc = parse_geocode(_geocode_fetcher(city))
-    wind_kph, rain_mm = parse_open_meteo(_weather_fetcher(loc["lat"], loc["lon"]))
+    payload = _weather_fetcher(loc["lat"], loc["lon"], date)
+    wind_kph, rain_mm = parse_open_meteo_daily(payload) if date else parse_open_meteo(payload)
     return {**loc, "wind_kph": wind_kph, "rain_mm": rain_mm}

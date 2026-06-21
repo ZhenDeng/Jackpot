@@ -70,7 +70,9 @@ Real match context can nudge the prediction — entered by you, never invented, 
 **bounded** so no single factor dominates (combined multiplier clamped to 0.70–1.30):
 
 - **Weather** — wind/rain lowers both sides' expected goals. **Auto-fetch** from
-  **Open-Meteo** (free, no API key) by typing the match city, or enter wind/rain by hand.
+  **Open-Meteo** (free, no API key) by typing the match city; set the **Match date**
+  and a future kickoff uses that day's forecast (today/past use current conditions).
+  Or enter wind/rain by hand.
 - **Rest days** — a short-rested side scores slightly less.
 - **Key attacker out** — that team scores less.
 - **Key defender out** — the *opponent* scores more.
@@ -143,8 +145,15 @@ PYTHONPATH=src .venv/bin/python -m jackpot.backtest path/to/E0.csv
 
 Reports proper scoring rules — **RPS** (the right metric for ordered 1X2; ~0.222
 is coin-flip), log-loss, Brier — plus top-pick accuracy and a calibration table
-(predicted vs actual home-win frequency). It then grid-searches `home_adv` / `rho`
-and prints the best-tuned weights. Download real CSVs from football-data.co.uk.
+(predicted vs actual home-win frequency). It grid-searches `home_adv` / `rho` /
+`shrink_k` and prints the best-tuned weights. Download real CSVs from
+football-data.co.uk.
+
+**Tuning the model-vs-market blend weight:** if the CSV includes bookmaker odds
+columns (`B365H/B365D/B365A`, `PSH/PSD/PSA`, or `AvgH/AvgD/AvgA`), the backtest also
+grid-searches `blend_weight` and reports the value that minimises RPS for *your*
+leagues — a data-backed answer to "what blend weight is best" rather than a guess.
+Without odds columns the blend is inert and only the model weights are tuned.
 
 ## World Cup / national teams
 
@@ -214,6 +223,7 @@ Done:
   `docs/specs/2026-06-20-understat-cookie-design.md`
 - **Context factors** (weather, rest, key absences — bounded levers) + **World
   Cup in the app** (Elo model in the dropdown) — `docs/specs/2026-06-20-context-factors-design.md`
+- **Backtest blend-weight tuning** (vs real bookmaker odds) + **match-date weather** (forecast for the kickoff day) — `docs/specs/2026-06-21-blend-tune-match-date-design.md`
 - **Auto weather** via Open-Meteo (free, no API key — fetch wind/rain by city) — `docs/specs/2026-06-21-open-meteo-weather-design.md`
 - **API-Football integration** (official API, free tier, top-5 leagues, goals-based
   team form) — `docs/specs/2026-06-20-apifootball-design.md`

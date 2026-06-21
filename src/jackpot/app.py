@@ -4,6 +4,8 @@ Run with:  streamlit run src/jackpot/app.py
 """
 from __future__ import annotations
 
+from datetime import date as _date
+
 import streamlit as st
 
 from jackpot.context import compute_adjustments
@@ -43,13 +45,12 @@ def get_provider(name: str):
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def cached_weather(city: str):
-    """Geocode + current weather for a city (cached 30 min).
+def cached_weather(city: str, date: str = None):
+    """Geocode + weather for a city (cached 30 min, keyed by canonical city + date).
 
-    Keyed on the canonical (trimmed, lower-cased) city so "London"/"london "/" London"
-    share one cache entry and one live fetch.
+    ``date`` (ISO) fetches that day's forecast; None fetches current conditions.
     """
-    return fetch_weather_for_city(city.strip().lower())
+    return fetch_weather_for_city(city.strip().lower(), date=date)
 
 
 st.title("⚽ Jackpot — Soccer Bet Predictions")
@@ -59,6 +60,7 @@ st.caption("Dixon–Coles goal model · xG-based · every market from one score 
 with st.sidebar:
     st.header("Match")
     source = st.radio("Data source", DATA_SOURCES)
+    match_date = st.date_input("Match date", value=_date.today())
     manual = source == "Manual entry"
     national = source == "World Cup (national)"
 
@@ -195,15 +197,19 @@ with st.sidebar:
         st.caption(f"Goal multiplier applied to both sides: ×{weather_mult:.3f}")
     elif weather_src.startswith("Auto"):
         city = st.text_input("Match city (free, no API key)", placeholder="e.g. London")
+        # a future Match date uses that day's forecast (Open-Meteo ~16-day horizon);
+        # today/past use current conditions.
+        fdate = match_date.isoformat() if match_date and match_date > _date.today() else None
         # only fetch once a plausible name is typed (avoids a call per keystroke;
         # repeats are deduped by the cache)
         if len(city.strip()) >= 3:
             try:
-                info = cached_weather(city)
+                info = cached_weather(city, fdate)
                 weather_mult = weather_adjustment(info["wind_kph"], info["rain_mm"])
+                when = f"forecast {fdate}" if fdate else "current"
                 st.caption(
-                    f"{info['name']}, {info['country']}: wind {info['wind_kph']:.0f} km/h, "
-                    f"rain {info['rain_mm']:.1f} mm → ×{weather_mult:.3f}"
+                    f"{info['name']}, {info['country']} ({when}): wind {info['wind_kph']:.0f} "
+                    f"km/h, rain {info['rain_mm']:.1f} mm → ×{weather_mult:.3f}"
                 )
             except Exception as e:  # pragma: no cover - UI/network guard
                 st.warning(f"Couldn't fetch weather for '{city}' ({e}). Using neutral.")
