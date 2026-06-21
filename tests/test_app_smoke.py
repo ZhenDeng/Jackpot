@@ -88,6 +88,17 @@ def test_app_live_mode_shows_cookie_inputs_without_network():
     assert "Cloudflare cookie" in infos
 
 
+def test_app_apifootball_mode_shows_key_input_without_network():
+    at = _fresh()
+    at.radio[0].set_value("API-Football (live)").run()
+    assert not at.exception
+    labels = " ".join(ti.label for ti in at.text_input)
+    assert "API-Football key" in labels       # key input present
+    # no key supplied -> no network fetch, just a prompt to enter one
+    infos = " ".join(i.value for i in at.info)
+    assert "API-Football key" in infos
+
+
 def test_app_manual_entry_produces_prediction():
     at = _fresh()
     # switch data source to Manual entry; defaults are a valid fixture

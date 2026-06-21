@@ -51,12 +51,25 @@ In the sidebar pick a **data source**:
 - **Sample (offline)** — bundled teams, zero setup. Best for a first look.
 - **Manual entry** — type a real upcoming fixture's recent form (xG per game) and
   optionally a few key players, then **Predict**. The way to try a real match today.
+- **API-Football (live)** — ✅ recommended live source. Official, ToS-clean API with
+  a **free tier (100 req/day)**; covers the top leagues **and the World Cup**. Paste
+  an API key (see below).
 - **Understat (live)** — ⚠️ Cloudflare-gated. Works **only** if you paste a
-  `cf_clearance` cookie from your browser (see below). Best-effort; manual entry is
-  the reliable fallback.
+  `cf_clearance` cookie from your browser (see below). Best-effort.
 
 Then optionally enter bookmaker odds (value flags + blending) or kickoff weather,
 and hit **Predict**.
+
+### Using API-Football (recommended live data)
+
+1. Sign up free at **dashboard.api-football.com** and copy your **API key**
+   (the free plan allows 100 requests/day — plenty for a personal app).
+2. In the app: **Data source → API-Football (live)**, paste the key, pick the season
+   start year (e.g. 2024 for the 2024/25 season).
+3. Choose a league (incl. **World Cup**) and two teams, then **Predict**.
+
+Team form is goals-based in this version (the model's shrinkage handles it). Per-team
+xG, player props, corners/cards, and odds from API-Football are planned follow-ups.
 
 ### Making Understat (live) work — the Cloudflare cookie
 
@@ -159,10 +172,9 @@ docs/specs/     # design spec + tasks
 ## Roadmap (not yet built)
 
 - More player props (shots, assists)
-- Auto-filled corner/card rates (currently manual entry)
+- API-Football enrichments: per-team xG, player props, corners/cards, odds
+  (v1 is goals-based team form)
 - Streamlit tabs for the national-team variant and count props
-- Fully automated live data (currently needs a manual Cloudflare cookie; full
-  automation is blocked by Cloudflare's CAPTCHA)
 
 Done:
 - **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
@@ -176,6 +188,8 @@ Done:
   rates) — `docs/specs/2026-06-20-count-props-design.md`
 - **Understat live via Cloudflare cookie** (paste `cf_clearance` + User-Agent) —
   `docs/specs/2026-06-20-understat-cookie-design.md`
+- **API-Football integration** (official API, free tier, top leagues + World Cup,
+  goals-based team form) — `docs/specs/2026-06-20-apifootball-design.md`
 
 ## Disclaimer
 
