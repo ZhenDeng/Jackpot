@@ -170,7 +170,10 @@ World Cup matches are treated as **neutral** venues by default. A small sample E
 table is bundled; pass explicit ratings (from eloratings.net) for any nation.
 
 This is also available in the **app** without the command line — pick
-**Data source → World Cup (national)**.
+**Data source → World Cup (national)**. Confidence is derived from the Elo gap
+(decisive mismatch → higher), and you can tick **Add key players** to enter each
+side's strikers for **goalscorer props** (user-entered, as no free national squad
+data exists — same as Manual mode).
 
 ## Corners & cards (count props)
 

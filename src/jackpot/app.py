@@ -54,6 +54,29 @@ def cached_weather(city: str, date: Optional[str] = None):
     return fetch_weather_for_city(city.strip().lower(), date=date)
 
 
+def player_table_inputs():
+    """Optional player table for goalscorer props → (home_squad, away_squad).
+
+    Shared by Manual and World Cup modes. Returns (None, None) when unused.
+    """
+    home_squad = away_squad = None
+    if st.checkbox("Add key players (optional, for goalscorer props)"):
+        st.caption("Leave blank to skip. xG/90 ≈ a striker's chance quality per match.")
+        cols = ["Player", "xG/90", "Minutes", "Penalty"]
+        blank = [
+            {c: ("" if c == "Player" else (90.0 if c == "Minutes" else (0.0 if c == "xG/90" else False)))
+             for c in cols}
+            for _ in range(3)
+        ]
+        st.markdown("Home players")
+        home_rows = st.data_editor(blank, num_rows="dynamic", key="home_players")
+        st.markdown("Away players")
+        away_rows = st.data_editor([dict(b) for b in blank], num_rows="dynamic", key="away_players")
+        home_squad = rows_to_squad(home_rows)
+        away_squad = rows_to_squad(away_rows)
+    return home_squad, away_squad
+
+
 st.title("⚽ Jackpot — Soccer Bet Predictions")
 st.caption("Dixon–Coles goal model · xG-based · every market from one score matrix")
 
@@ -80,8 +103,10 @@ with st.sidebar:
         away = st.text_input("Away nation", "Iran")
         away_elo = st.number_input("Away Elo", 1000, 2400, 1760)
         neutral = st.checkbox("Neutral venue (World Cup)", value=True)
+        nat_home_squad, nat_away_squad = player_table_inputs()
         nat_inputs = dict(
             home=home, away=away, elo_home=home_elo, elo_away=away_elo, neutral=neutral,
+            home_squad=nat_home_squad, away_squad=nat_away_squad,
         )
     elif manual:
         st.caption("Type a real fixture's recent form (xG per game preferred).")
@@ -100,17 +125,7 @@ with st.sidebar:
             ac = st.number_input("Away conceded/game", 0.0, 6.0, 1.6, 0.1)
             am = st.number_input("Away matches", 1, 60, 20)
 
-        home_squad = away_squad = None
-        if st.checkbox("Add key players (optional, for goalscorer props)"):
-            st.caption("Leave blank to skip. xG/90 ≈ a striker's chance quality per match.")
-            cols = ["Player", "xG/90", "Minutes", "Penalty"]
-            blank = [{c: ("" if c == "Player" else (90.0 if c == "Minutes" else (0.0 if c == "xG/90" else False))) for c in cols} for _ in range(3)]
-            st.markdown("Home players")
-            home_rows = st.data_editor(blank, num_rows="dynamic", key="home_players")
-            st.markdown("Away players")
-            away_rows = st.data_editor([dict(b) for b in blank], num_rows="dynamic", key="away_players")
-            home_squad = rows_to_squad(home_rows)
-            away_squad = rows_to_squad(away_rows)
+        home_squad, away_squad = player_table_inputs()
 
         home, away = hn, an
         man_inputs = dict(
