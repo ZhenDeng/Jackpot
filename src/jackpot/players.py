@@ -14,8 +14,11 @@ from .odds import fair_odds
 # fraction of team goals modelled as penalties, assigned to the penalty taker(s)
 PENALTY_FRACTION = 0.08
 
-# fraction of a team's goals that are assisted — sizes the assist pool shared out
-# across creators (most goals have an assister; solo efforts and penalties don't).
+# Fraction of ALL a team's goals that are assisted (penalties in the denominator),
+# used to size the assist pool shared across creators. ~0.75 already folds in that
+# penalties and solo efforts have no assister (open-play share ~0.92 × ~0.80
+# assisted ≈ 0.74), so the pool is sized off the full team lambda — do NOT also
+# apply a (1 - PENALTY_FRACTION) correction or assists get double-discounted.
 ASSIST_FRACTION = 0.75
 
 # entry = (player_name, raw_output, is_penalty_taker)
@@ -110,6 +113,10 @@ def build_player_props(
     (no penalty boost — penalties aren't assisted). Each player's involvement is
     ``p_involvement(goal_lambda, assist_lambda)``. Returns the ``top_n`` most likely
     to be involved; ``[]`` when no squad / no attacking output is available.
+
+    A pure-creator (xG/90 = 0, xA/90 > 0) has ``p_score == 0`` and therefore
+    ``fair_odds == inf`` — the same zero-probability convention used everywhere
+    else; callers render it via the ``_odds`` helper.
     """
     if not squad:
         return []

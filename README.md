@@ -1,7 +1,7 @@
 # ⚽ Jackpot — Soccer Bet Prediction
 
 Predict every item in a bet **Tab** — Match Result (1X2), Over/Under, BTTS,
-Correct Score, Double Chance, Draw No Bet, **Anytime Goalscorer** player props, and
+Correct Score, Double Chance, Draw No Bet, **Score or Assist** player props, and
 **team props** (team total goals, clean sheet, win to nil, winning margin) — for a
 soccer match, from a single consistent goal model. A **Same Game Multi (SGM)** tab
 combines the four highest-confidence legs (one pick per market) into one bet with a
@@ -120,7 +120,7 @@ Chromium all get blocked (a CAPTCHA). The one path that works: solve Cloudflare
    have it (e.g. from fbref.com or understat.com in your browser), goals/game otherwise.
 3. Set the league average (~1.4–1.5 for top leagues).
 4. (Optional) tick **Add key players** and enter a striker or two (xG/90 ~0.3–0.9).
-5. **Predict** — every tab populates, including Goalscorers if you added players.
+5. **Predict** — every tab populates, including Goals & Assists if you added players.
 
 ## Tests
 
@@ -174,7 +174,7 @@ table is bundled; pass explicit ratings (from eloratings.net) for any nation.
 This is also available in the **app** without the command line — pick
 **Data source → World Cup (national)**. Confidence is derived from the Elo gap
 (decisive mismatch → higher), and you can tick **Add key players** to enter each
-side's strikers for **goalscorer props** (user-entered, as no free national squad
+side's key players (xG/90 + xA/90) for **score-or-assist props** (user-entered, as no free national squad
 data exists — same as Manual mode).
 
 ## Corners & cards (count props)
@@ -215,7 +215,7 @@ docs/specs/     # design spec + tasks
 - Calibrate the context-factor magnitudes via the backtest harness
 
 Done:
-- **Anytime Goalscorer** player props — `docs/specs/2026-06-20-player-props-design.md`
+- **Score or Assist** player props (anytime-scorer kept alongside) — `docs/specs/2026-06-20-player-props-design.md`, `docs/specs/2026-06-21-player-goal-or-assist-design.md`
 - **Team props** (team total goals, clean sheet, win to nil, winning margin), all
   derived exactly from the score matrix — `docs/specs/2026-06-20-team-props-design.md`
 - **Backtesting & calibration harness** (walk-forward, RPS/log-loss/Brier,
