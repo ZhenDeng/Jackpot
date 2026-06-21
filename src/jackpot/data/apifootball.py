@@ -42,7 +42,11 @@ def parse_standings(payload: Dict) -> Dict[str, Dict[str, float]]:
     response = payload.get("response") or []
     if not response:
         errors = payload.get("errors")
-        raise ValueError(f"empty API-Football standings response (errors: {errors})")
+        raise ValueError(
+            "empty API-Football standings response — the league/season may be "
+            "off-season, a knockout tournament without a table, or outside your "
+            f"plan's coverage (errors: {errors})"
+        )
 
     league = response[0].get("league", {})
     groups = league.get("standings") or []

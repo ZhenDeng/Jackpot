@@ -128,12 +128,16 @@ with st.sidebar:
         else:  # API-Football (live)
             st.caption(
                 "API-Football: get a free key (100 req/day) at dashboard.api-football.com, "
-                "paste it below. Covers the top leagues and the World Cup. See the README."
+                "paste it below. Covers the top leagues. For the World Cup, use the "
+                "**World Cup (national)** data source instead. See the README."
             )
             api_key = st.text_input("API-Football key", type="password")
             season = int(st.number_input("Season (start year)", 2015, 2030, 2024))
             provider = ApiFootballProvider(api_key=api_key, season=season) if api_key else None
-            leagues = ["EPL", "La Liga", "Serie A", "Bundesliga", "Ligue 1", "World Cup"]
+            # World Cup is a knockout tournament with no league table, so the
+            # standings-based provider can't represent it — it's handled by the
+            # dedicated "World Cup (national)" Elo mode.
+            leagues = ["EPL", "La Liga", "Serie A", "Bundesliga", "Ligue 1"]
             live_ready = bool(api_key)
             live_hint = "Enter your API-Football key above to load live teams."
         league = st.selectbox("League", leagues)

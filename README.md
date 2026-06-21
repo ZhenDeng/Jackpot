@@ -52,7 +52,8 @@ In the sidebar pick a **data source**:
 - **Manual entry** — type a real upcoming fixture's recent form (xG per game) and
   optionally a few key players, then **Predict**. The way to try a real match today.
 - **API-Football (live)** — ✅ recommended live source. Official, ToS-clean API with
-  a **free tier (100 req/day)**; covers the top leagues **and the World Cup**. Paste
+  a **free tier (100 req/day)**; covers the top leagues. (For the World Cup, use the
+  **World Cup (national)** source — a knockout tournament has no league table.) Paste
   an API key (see below).
 - **Understat (live)** — ⚠️ Cloudflare-gated. Works **only** if you paste a
   `cf_clearance` cookie from your browser (see below). Best-effort.
@@ -81,7 +82,8 @@ Off by default (no effect). The resulting goal multipliers are shown before you 
    (the free plan allows 100 requests/day — plenty for a personal app).
 2. In the app: **Data source → API-Football (live)**, paste the key, pick the season
    start year (e.g. 2024 for the 2024/25 season).
-3. Choose a league (incl. **World Cup**) and two teams, then **Predict**.
+3. Choose one of the top-5 leagues and two teams, then **Predict**. (The free tier
+   only covers seasons ~2022–2024; current-season access needs a paid plan.)
 
 Team form is goals-based in this version (the model's shrinkage handles it). Per-team
 xG, player props, corners/cards, and odds from API-Football are planned follow-ups.
@@ -211,8 +213,8 @@ Done:
   `docs/specs/2026-06-20-understat-cookie-design.md`
 - **Context factors** (weather, rest, key absences — bounded levers) + **World
   Cup in the app** (Elo model in the dropdown) — `docs/specs/2026-06-20-context-factors-design.md`
-- **API-Football integration** (official API, free tier, top leagues + World Cup,
-  goals-based team form) — `docs/specs/2026-06-20-apifootball-design.md`
+- **API-Football integration** (official API, free tier, top-5 leagues, goals-based
+  team form) — `docs/specs/2026-06-20-apifootball-design.md`
 
 ## Disclaimer
 
