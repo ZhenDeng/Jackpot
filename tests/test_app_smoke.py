@@ -134,6 +134,26 @@ def test_app_advanced_factor_lowers_expected_goals():
     assert home_xg(attacker_out=True) < home_xg(attacker_out=False)
 
 
+def test_app_weather_auto_mode_renders_city_input_without_network():
+    at = _fresh()
+    # weather source is the 2nd radio (data source is the 1st)
+    weather_radio = next(r for r in at.radio if "Auto (Open-Meteo, free)" in r.options)
+    weather_radio.set_value("Auto (Open-Meteo, free)").run()
+    assert not at.exception
+    # city input appears; empty default => no network fetch fires
+    assert any("Match city" in ti.label for ti in at.text_input)
+
+
+def test_app_manual_weather_still_works():
+    at = _fresh()
+    weather_radio = next(r for r in at.radio if "Manual" in r.options)
+    weather_radio.set_value("Manual").run()
+    at.button[0].click().run()   # Sample mode default fixture predicts fine
+    assert not at.exception
+    labels = " ".join(ni.label for ni in at.number_input)
+    assert "Wind (kph)" in labels and "Rain (mm/h)" in labels
+
+
 def test_app_manual_entry_produces_prediction():
     at = _fresh()
     # switch data source to Manual entry; defaults are a valid fixture

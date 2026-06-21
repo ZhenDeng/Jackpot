@@ -11,7 +11,7 @@ from jackpot.data.apifootball import ApiFootballProvider
 from jackpot.data.manual import build_manual_match, rows_to_squad
 from jackpot.data.sample import SampleDataProvider
 from jackpot.data.understat import UnderstatProvider
-from jackpot.data.weather import weather_adjustment
+from jackpot.data.weather import weather_adjustment, fetch_weather_for_city
 from jackpot.national import predict_international, SAMPLE_ELO
 from jackpot.odds import fair_odds
 from jackpot.predict import predict
@@ -40,6 +40,16 @@ def _row(label: str, rec: dict) -> None:
 @st.cache_resource
 def get_provider(name: str):
     return SampleDataProvider() if name == "Sample (offline)" else UnderstatProvider()
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def cached_weather(city: str):
+    """Geocode + current weather for a city (cached 30 min).
+
+    Keyed on the canonical (trimmed, lower-cased) city so "London"/"london "/" London"
+    share one cache entry and one live fetch.
+    """
+    return fetch_weather_for_city(city.strip().lower())
 
 
 st.title("⚽ Jackpot — Soccer Bet Predictions")
@@ -173,14 +183,30 @@ with st.sidebar:
 
     st.subheader("Weather (optional)")
     st.caption("Strong wind/rain modestly lowers expected goals (bounded).")
-    use_weather = st.checkbox("Apply kickoff weather")
+    weather_src = st.radio(
+        "Weather source", ["Off", "Auto (Open-Meteo, free)", "Manual"], horizontal=True,
+    )
     weather_mult = 1.0
-    if use_weather:
+    if weather_src == "Manual":
         wc1, wc2 = st.columns(2)
         wind_kph = wc1.number_input("Wind (kph)", min_value=0.0, value=10.0, step=5.0)
         rain_mm = wc2.number_input("Rain (mm/h)", min_value=0.0, value=0.0, step=1.0)
         weather_mult = weather_adjustment(wind_kph=wind_kph, rain_mm=rain_mm)
         st.caption(f"Goal multiplier applied to both sides: ×{weather_mult:.3f}")
+    elif weather_src.startswith("Auto"):
+        city = st.text_input("Match city (free, no API key)", placeholder="e.g. London")
+        # only fetch once a plausible name is typed (avoids a call per keystroke;
+        # repeats are deduped by the cache)
+        if len(city.strip()) >= 3:
+            try:
+                info = cached_weather(city)
+                weather_mult = weather_adjustment(info["wind_kph"], info["rain_mm"])
+                st.caption(
+                    f"{info['name']}, {info['country']}: wind {info['wind_kph']:.0f} km/h, "
+                    f"rain {info['rain_mm']:.1f} mm → ×{weather_mult:.3f}"
+                )
+            except Exception as e:  # pragma: no cover - UI/network guard
+                st.warning(f"Couldn't fetch weather for '{city}' ({e}). Using neutral.")
 
     st.subheader("Advanced factors (optional)")
     st.caption("Real context you supply — bounded, never invented. Off = no effect.")
