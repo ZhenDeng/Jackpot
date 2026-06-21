@@ -93,16 +93,12 @@ def test_app_renders_team_props():
     assert "Winning Margin" in body
 
 
-def test_app_live_mode_shows_cookie_inputs_without_network():
+def test_app_data_sources_exclude_understat():
+    # Understat was removed; it must no longer be an offered data source
     at = _fresh()
-    at.radio[0].set_value("Understat (live)").run()
     assert not at.exception
-    labels = " ".join(ti.label for ti in at.text_input)
-    assert "cf_clearance" in labels        # cookie input present
-    assert "User-Agent" in labels          # UA input present
-    # no cookie supplied -> no network fetch, just a prompt to paste one
-    infos = " ".join(i.value for i in at.info)
-    assert "Cloudflare cookie" in infos
+    assert any("Sample (offline)" in (r.options or []) for r in at.radio)
+    assert all("Understat (live)" not in (r.options or []) for r in at.radio)
 
 
 def test_app_apifootball_mode_shows_key_input_without_network():

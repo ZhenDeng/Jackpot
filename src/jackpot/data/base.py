@@ -1,7 +1,7 @@
 """Data-layer contracts: the dataclasses the engine consumes and the provider ABC.
 
 The engine and UI depend only on these types and on ``MatchDataProvider`` — never
-on a concrete data source. Swapping Understat for a paid API later means writing
+on a concrete data source. Adding or swapping a data source later means writing
 one new provider, nothing else changes.
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ class MatchData:
 
 
 class MatchDataProvider(ABC):
-    """Source of match data. Concrete providers: Sample (offline), Understat (live)."""
+    """Source of match data. Concrete providers: Sample (offline), API-Football (live)."""
 
     @abstractmethod
     def list_teams(self, league: str) -> List[str]:
