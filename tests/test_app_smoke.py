@@ -117,6 +117,16 @@ def test_app_world_cup_mode_produces_prediction():
     assert any("Expected goals" in m.label for m in at.metric)
     body = " ".join(m.value for m in at.markdown)
     assert "Belgium" in body and "Iran" in body  # default nations in the 1X2 tab
+    # confidence shows a real Elo-based level, not the "—" placeholder
+    conf = next(m for m in at.metric if m.label == "Confidence")
+    assert conf.value in ("High", "Medium", "Low")
+
+
+def test_app_world_cup_mode_offers_player_entry():
+    at = _fresh()
+    at.radio[0].set_value("World Cup (national)").run()
+    # the shared player table (for goalscorer props) is offered in World Cup mode
+    assert any("Add key players" in c.label for c in at.checkbox)
 
 
 def test_app_advanced_factor_lowers_expected_goals():

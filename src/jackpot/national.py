@@ -19,6 +19,22 @@ INTL_TOTAL_GOALS = 2.6     # baseline expected total goals in an international m
 GOALS_PER_ELO = 0.006      # expected goal supremacy per Elo point of difference
 HOME_ADV_ELO = 65.0        # Elo-point home edge (only when not a neutral venue)
 LAMBDA_FLOOR = 0.15        # keep both sides' expected goals positive
+# Elo-gap thresholds for prediction confidence (international football is high
+# variance, so the bars are deliberately conservative).
+CONFIDENCE_HIGH_GAP = 250.0
+CONFIDENCE_MEDIUM_GAP = 100.0
+
+
+def elo_confidence(elo_home: float, elo_away: float) -> str:
+    """Prediction confidence from the Elo gap: a decisive mismatch is a confident
+    call, a near-even tie is genuinely a coin-flip."""
+    gap = abs(elo_home - elo_away)
+    if gap >= CONFIDENCE_HIGH_GAP:
+        return "High"
+    if gap >= CONFIDENCE_MEDIUM_GAP:
+        return "Medium"
+    return "Low"
+
 
 # Illustrative national-team Elo ratings (eloratings.net style; not live).
 SAMPLE_ELO = {
@@ -195,7 +211,7 @@ def predict_international(
         # shared contract with predict() so a common renderer can read either result
         "home_team": home,
         "away_team": away,
-        "confidence": None,
+        "confidence": elo_confidence(elo_home, elo_away),
         "elo_home": elo_home,
         "elo_away": elo_away,
         "neutral": neutral,
