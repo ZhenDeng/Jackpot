@@ -1,11 +1,15 @@
 import math
 
+from jackpot.data.base import PlayerForm
 from jackpot.players import (
     raw_output,
     p_score,
     p_two_plus,
+    p_involvement,
     allocate_lambdas,
+    build_player_props,
     PENALTY_FRACTION,
+    ASSIST_FRACTION,
 )
 
 
@@ -25,6 +29,33 @@ def test_p_two_plus_formula():
     assert math.isclose(p_two_plus(lam), 1 - math.exp(-lam) * (1 + lam), rel_tol=1e-12)
     # 2+ is always less likely than 1+
     assert p_two_plus(lam) < p_score(lam)
+
+
+def test_p_involvement_combines_goal_and_assist():
+    g, a = 0.4, 0.3
+    assert math.isclose(p_involvement(g, a), 1 - math.exp(-(g + a)), rel_tol=1e-12)
+
+
+def test_p_involvement_reduces_to_scorer_without_assists():
+    assert math.isclose(p_involvement(0.5, 0.0), p_score(0.5), rel_tol=1e-12)
+
+
+def test_p_involvement_at_least_anytime_scorer():
+    # adding an assist chance can only raise the chance of being involved
+    assert p_involvement(0.5, 0.3) > p_score(0.5)
+
+
+def test_p_involvement_rejects_negative():
+    for bad in ((-0.1, 0.0), (0.0, -0.1)):
+        try:
+            p_involvement(*bad)
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
+def test_assist_fraction_is_a_sensible_share():
+    assert 0.0 < ASSIST_FRACTION <= 1.0
 
 
 def test_allocate_conserves_team_lambda_without_penalty_taker():
@@ -84,3 +115,31 @@ def test_allocate_splits_penalty_pool_among_multiple_takers():
     # conservation still holds; the two takers are symmetric
     assert math.isclose(sum(lams.values()), 2.0, rel_tol=1e-9)
     assert math.isclose(lams["P1"], lams["P2"], rel_tol=1e-9)
+
+
+# ---- build_player_props ----
+
+def test_build_props_pure_creator_zero_scorer_positive_involvement():
+    # xG/90 = 0, xA/90 > 0 -> never scores, but can be involved via assists
+    squad = [PlayerForm("Creator", xg_per90=0.0, xa_per90=0.6, expected_minutes=90)]
+    props = build_player_props(squad, team_lambda=1.5, top_n=5)
+    assert len(props) == 1
+    e = props[0]
+    assert e["p_score"] == 0.0
+    assert e["fair_odds"] == float("inf")          # zero-prob convention
+    assert e["p_involve"] > 0.0
+    assert e["fair_odds_involve"] < float("inf")
+
+
+def test_build_props_empty_when_no_attacking_output():
+    squad = [PlayerForm("Bench", xg_per90=0.0, xa_per90=0.0)]
+    assert build_player_props(squad, team_lambda=1.5, top_n=5) == []
+
+
+def test_build_props_assist_pool_excludes_penalty_double_discount():
+    # involvement must reflect the assist pool sized off the full team lambda
+    squad = [PlayerForm("Mixed", xg_per90=0.4, xa_per90=0.4, expected_minutes=90)]
+    e = build_player_props(squad, team_lambda=2.0, top_n=1)[0]
+    # sole player: goal lambda = 2.0, assist lambda = 2.0 * ASSIST_FRACTION
+    expected = p_involvement(2.0, 2.0 * ASSIST_FRACTION)
+    assert math.isclose(e["p_involve"], expected, rel_tol=1e-9)

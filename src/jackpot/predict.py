@@ -23,25 +23,8 @@ DEFAULT_PLAYER_PROPS_TOP_N = 8
 
 
 def _player_props(team: TeamForm, team_lambda: float, top_n: int) -> List[dict]:
-    """Anytime/2+ goalscorer props for a team, or [] when no squad is available."""
-    if not team.squad:
-        return []
-    entries = [
-        (p.name, pl.raw_output(p.xg_per90, p.expected_minutes), p.penalty_taker)
-        for p in team.squad
-    ]
-    lambdas = pl.allocate_lambdas(entries, team_lambda)
-    props = [
-        {
-            "player": name,
-            "p_score": pl.p_score(lam),
-            "p_2plus": pl.p_two_plus(lam),
-            "fair_odds": fair_odds(pl.p_score(lam)),
-        }
-        for name, lam in lambdas.items()
-    ]
-    props.sort(key=lambda e: e["p_score"], reverse=True)
-    return props[:top_n]
+    """Score-or-assist (+ anytime/2+) props for a team, or [] when no squad."""
+    return pl.build_player_props(team.squad, team_lambda, top_n)
 
 
 def _rates(form) -> TeamRates:

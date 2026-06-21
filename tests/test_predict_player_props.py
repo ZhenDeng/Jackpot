@@ -11,24 +11,29 @@ def test_player_props_present_for_sample_match():
     pp = out["markets"]["player_props"]
     assert "home" in pp and "away" in pp
     assert len(pp["home"]) >= 3
-    # entries have the expected shape
+    # entries have the expected shape (involvement primary, scorer secondary)
     top = pp["home"][0]
-    assert set(top) == {"player", "p_score", "p_2plus", "fair_odds"}
+    assert set(top) == {
+        "player", "p_involve", "fair_odds_involve", "p_score", "p_2plus", "fair_odds"
+    }
     assert 0.0 <= top["p_score"] <= 1.0
+    assert 0.0 <= top["p_involve"] <= 1.0
+    assert top["p_involve"] >= top["p_score"]          # score-or-assist >= score
     assert math.isclose(top["fair_odds"], 1.0 / top["p_score"], rel_tol=1e-9)
+    assert math.isclose(top["fair_odds_involve"], 1.0 / top["p_involve"], rel_tol=1e-9)
 
 
-def test_player_props_sorted_descending():
+def test_player_props_sorted_by_involvement_descending():
     md = SampleDataProvider().get_match("Manchester City", "Burnley", "EPL")
     pp = predict(md)["markets"]["player_props"]["home"]
-    probs = [e["p_score"] for e in pp]
+    probs = [e["p_involve"] for e in pp]
     assert probs == sorted(probs, reverse=True)
 
 
-def test_top_scorer_is_the_star():
+def test_top_involvement_is_the_star():
     md = SampleDataProvider().get_match("Manchester City", "Burnley", "EPL")
     pp = predict(md)["markets"]["player_props"]["home"]
-    # Haaland: highest xG/90 and the penalty taker -> most likely scorer
+    # Haaland: highest xG/90 and the penalty taker -> most likely involved
     assert pp[0]["player"] == "E. Haaland"
 
 

@@ -122,24 +122,7 @@ def _o(
 
 
 def _player_props(squad, team_lambda: float) -> List[dict]:
-    if not squad:
-        return []
-    entries = [
-        (p.name, pl.raw_output(p.xg_per90, p.expected_minutes), p.penalty_taker)
-        for p in squad
-    ]
-    lambdas = pl.allocate_lambdas(entries, team_lambda)
-    props = [
-        {
-            "player": name,
-            "p_score": pl.p_score(lam),
-            "p_2plus": pl.p_two_plus(lam),
-            "fair_odds": fair_odds(pl.p_score(lam)),
-        }
-        for name, lam in lambdas.items()
-    ]
-    props.sort(key=lambda e: e["p_score"], reverse=True)
-    return props[:_PLAYER_TOP_N]
+    return pl.build_player_props(squad, team_lambda, _PLAYER_TOP_N)
 
 
 def predict_international(

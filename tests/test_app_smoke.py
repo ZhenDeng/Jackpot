@@ -71,10 +71,12 @@ def test_app_renders_goalscorer_props():
     at.button[0].click().run()
     assert not at.exception
     body = " ".join(m.value for m in at.markdown)
-    # Haaland only appears in the goalscorers tab -> proves player props rendered
+    # Haaland only appears in the goals/assists tab -> proves player props rendered
     assert "Haaland" in body
+    # the prop now headlines goal involvement (score or assist)
+    assert "score or assist" in body
     captions = " ".join(c.value for c in at.caption)
-    assert "Anytime goalscorer" in captions
+    assert "score or assist" in captions
 
 
 def test_app_renders_team_props():
