@@ -50,15 +50,19 @@ def parse_standings(payload: Dict) -> Dict[str, Dict[str, float]]:
     out: Dict[str, Dict[str, float]] = {}
     for group in groups:                      # standings is a list of groups
         for row in group:
-            allp = row.get("all", {})
+            allp = row.get("all") or {}
             played = float(allp.get("played", 0) or 0)
             if played <= 0:
                 continue
-            goals = allp.get("goals", {})
-            name = row["team"]["name"]
+            # API-Football returns null goals/team for pre-season or bracket rows
+            name = (row.get("team") or {}).get("name")
+            goals = allp.get("goals") or {}
+            gf, ga = goals.get("for"), goals.get("against")
+            if not name or gf is None or ga is None:
+                continue  # incomplete row — skip rather than crash or invent data
             out[name] = {
-                "scored_per_game": float(goals.get("for", 0)) / played,
-                "conceded_per_game": float(goals.get("against", 0)) / played,
+                "scored_per_game": float(gf) / played,
+                "conceded_per_game": float(ga) / played,
                 "matches": int(played),
             }
     if not out:
@@ -104,7 +108,10 @@ class ApiFootballProvider(MatchDataProvider):
             timeout=15,
         )
         resp.raise_for_status()
-        parsed = parse_standings(resp.json())
+        try:
+            parsed = parse_standings(resp.json())
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError(f"unexpected API-Football response for {league!r}: {exc}") from exc
         self._cache[league] = parsed
         return parsed
 

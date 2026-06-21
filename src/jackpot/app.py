@@ -166,6 +166,9 @@ if go:
     if not home or not away or str(home).strip() == str(away).strip():
         st.warning("Enter two different teams." if manual else "Pick two different teams.")
         st.stop()
+    if not manual and provider is None:
+        st.error("Enter your live-source credential first.")
+        st.stop()
     try:
         if manual:
             match = build_manual_match(**man_inputs)
@@ -177,10 +180,15 @@ if go:
     except Exception as e:
         if manual:
             st.error(f"Failed to build match: {e}")
+        elif source.startswith("Understat"):
+            st.error(
+                f"Failed to load match data: {e}. Understat is Cloudflare-gated — "
+                "the cookie may have expired; use Manual entry as a fallback."
+            )
         else:
             st.error(
-                f"Failed to load match data: {e}. Live Understat is currently blocked "
-                "by Cloudflare — use Sample or Manual entry."
+                f"Failed to load match data: {e}. Check your API key / quota, "
+                "or use Manual entry as a fallback."
             )
         st.stop()
 

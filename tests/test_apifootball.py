@@ -77,6 +77,26 @@ def test_parse_standings_empty_response_raises():
         parse_standings({"response": [], "errors": ["No data"]})
 
 
+def test_parse_standings_skips_null_goals_without_crashing():
+    j = _standings_json()
+    grp = j["response"][0]["league"]["standings"][0]
+    grp.append({"team": {"id": 71, "name": "NullGoals"}, "all": {"played": 5, "goals": None}})
+    grp.append({"team": {"id": 72, "name": "NullFor"}, "all": {"played": 5, "goals": {"for": None, "against": 4}}})
+    parsed = parse_standings(j)  # must not raise
+    assert "NullGoals" not in parsed
+    assert "NullFor" not in parsed
+    assert "Manchester City" in parsed  # valid teams still parsed
+
+
+def test_parse_standings_skips_row_missing_team():
+    j = _standings_json()
+    j["response"][0]["league"]["standings"][0].append(
+        {"all": {"played": 5, "goals": {"for": 5, "against": 5}}}  # no "team"
+    )
+    parsed = parse_standings(j)  # must not raise KeyError
+    assert len(parsed) == 3  # the three valid teams
+
+
 # ---- league average ----
 
 def test_compute_league_avg_match_weighted():
