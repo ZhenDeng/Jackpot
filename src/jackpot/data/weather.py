@@ -108,7 +108,7 @@ def parse_open_meteo_daily(payload: Dict) -> Tuple[float, float]:
     rains = daily.get("precipitation_sum")
     if not winds or not rains:
         raise ValueError("no daily forecast in response")
-    return float(winds[0] or 0.0), float(rains[0] or 0.0)
+    return float(winds[0] or 0.0), float(rains[0] or 0.0)  # single-day request -> index 0
 
 
 def geocode_city(name: str) -> Dict:

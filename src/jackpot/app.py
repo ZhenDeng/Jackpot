@@ -5,6 +5,7 @@ Run with:  streamlit run src/jackpot/app.py
 from __future__ import annotations
 
 from datetime import date as _date
+from typing import Optional
 
 import streamlit as st
 
@@ -45,7 +46,7 @@ def get_provider(name: str):
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def cached_weather(city: str, date: str = None):
+def cached_weather(city: str, date: Optional[str] = None):
     """Geocode + weather for a city (cached 30 min, keyed by canonical city + date).
 
     ``date`` (ISO) fetches that day's forecast; None fetches current conditions.
@@ -182,6 +183,7 @@ with st.sidebar:
         oa = oc3.number_input("Away", min_value=1.01, value=3.60, step=0.05)
         market_odds = {"home": oh, "draw": od, "away": oa}
         blend_weight = st.slider("Model weight (vs market)", 0.0, 1.0, 0.7, 0.05)
+        st.caption("Tip: `python -m jackpot.backtest <odds.csv>` finds the best weight for your data.")
 
     st.subheader("Weather (optional)")
     st.caption("Strong wind/rain modestly lowers expected goals (bounded).")
@@ -197,9 +199,9 @@ with st.sidebar:
         st.caption(f"Goal multiplier applied to both sides: ×{weather_mult:.3f}")
     elif weather_src.startswith("Auto"):
         city = st.text_input("Match city (free, no API key)", placeholder="e.g. London")
-        # a future Match date uses that day's forecast (Open-Meteo ~16-day horizon);
-        # today/past use current conditions.
-        fdate = match_date.isoformat() if match_date and match_date > _date.today() else None
+        # today or a future Match date uses that day's forecast (Open-Meteo ~16-day
+        # horizon — better than current for a same-day kickoff); past dates use current.
+        fdate = match_date.isoformat() if match_date and match_date >= _date.today() else None
         # only fetch once a plausible name is typed (avoids a call per keystroke;
         # repeats are deduped by the cache)
         if len(city.strip()) >= 3:

@@ -27,6 +27,14 @@ def test_has_odds():
     assert not has_odds(sample_season())
 
 
+def test_has_odds_requires_complete_triple():
+    m = sample_season()[0]
+    m.home_odds, m.draw_odds, m.away_odds = 1.8, 3.5, None   # incomplete
+    assert not has_odds([m])
+    m.away_odds = 4.0
+    assert has_odds([m])
+
+
 def test_blend_weight_changes_rps_only_with_odds():
     season = _season_with_odds()
     pure_model = run_backtest(season, min_history=3, blend_weight=1.0).avg_rps

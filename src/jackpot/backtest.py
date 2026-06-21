@@ -94,7 +94,7 @@ def run_backtest(
             away = TeamForm(m.away, _mean(a_hist, 0), _mean(a_hist, 1), len(a_hist), False)
             # attach the match's bookmaker odds so blend_weight can actually engage
             odds = None
-            if m.home_odds and m.draw_odds and m.away_odds:
+            if m.home_odds is not None and m.draw_odds is not None and m.away_odds is not None:
                 odds = {"home": m.home_odds, "draw": m.draw_odds, "away": m.away_odds}
             md = MatchData(home, away, MatchContext(league_avg_goals=league_avg, market_odds=odds))
             mr = predict(md, **params)["markets"]["match_result"]
@@ -147,7 +147,10 @@ _BLEND_WEIGHTS = [0.0, 0.2, 0.3, 0.4, 0.5, 0.7, 1.0]
 
 def has_odds(matches) -> bool:
     """True if any match carries a complete bookmaker odds triple."""
-    return any(m.home_odds and m.draw_odds and m.away_odds for m in matches)
+    return any(
+        m.home_odds is not None and m.draw_odds is not None and m.away_odds is not None
+        for m in matches
+    )
 
 
 def format_report(result: BacktestResult, label: str = "Backtest") -> str:
