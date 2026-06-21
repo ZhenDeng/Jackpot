@@ -63,11 +63,14 @@ def parse_geocode(payload: Dict) -> Dict[str, object]:
     if not results:
         raise ValueError("no location found")
     top = results[0]
+    lat, lon = top.get("latitude"), top.get("longitude")
+    if lat is None or lon is None:
+        raise ValueError("geocoding result missing coordinates")
     return {
         "name": top.get("name", ""),
         "country": top.get("country", ""),
-        "lat": float(top["latitude"]),
-        "lon": float(top["longitude"]),
+        "lat": float(lat),
+        "lon": float(lon),
     }
 
 
@@ -75,7 +78,8 @@ def parse_open_meteo(payload: Dict) -> Tuple[float, float]:
     """Pull (wind_kph, rain_mm) from an Open-Meteo current-weather response.
 
     Open-Meteo reports wind in km/h and precipitation in mm by default, so no unit
-    conversion is needed.
+    conversion is needed. A null/missing reading is treated as 0.0 (calm/dry) — a
+    conservative default that can only soften the weather penalty, never inflate it.
     """
     current = payload.get("current")
     if current is None:

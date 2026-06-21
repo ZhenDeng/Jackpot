@@ -44,8 +44,12 @@ def get_provider(name: str):
 
 @st.cache_data(ttl=1800, show_spinner=False)
 def cached_weather(city: str):
-    """Geocode + current weather for a city (cached 30 min, keyed by city)."""
-    return fetch_weather_for_city(city)
+    """Geocode + current weather for a city (cached 30 min).
+
+    Keyed on the canonical (trimmed, lower-cased) city so "London"/"london "/" London"
+    share one cache entry and one live fetch.
+    """
+    return fetch_weather_for_city(city.strip().lower())
 
 
 st.title("⚽ Jackpot — Soccer Bet Predictions")
@@ -191,7 +195,9 @@ with st.sidebar:
         st.caption(f"Goal multiplier applied to both sides: ×{weather_mult:.3f}")
     elif weather_src.startswith("Auto"):
         city = st.text_input("Match city (free, no API key)", placeholder="e.g. London")
-        if city:
+        # only fetch once a plausible name is typed (avoids a call per keystroke;
+        # repeats are deduped by the cache)
+        if len(city.strip()) >= 3:
             try:
                 info = cached_weather(city)
                 weather_mult = weather_adjustment(info["wind_kph"], info["rain_mm"])
