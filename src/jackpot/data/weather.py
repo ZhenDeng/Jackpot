@@ -1,14 +1,20 @@
-"""Weather -> goal-expectancy adjustment, plus an OpenWeatherMap fetch helper.
+"""Weather -> goal-expectancy adjustment + free Open-Meteo auto-fetch (no API key).
 
 Heavy wind and rain modestly suppress scoring. The adjustment is deliberately
 **bounded** (never below 0.8) so a single context factor can't dominate the model.
+
+Open-Meteo (public-apis weather list) is free, key-less, and already reports wind in
+km/h and precipitation in mm — exactly ``weather_adjustment``'s inputs.
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Dict, Optional, Tuple
 
 WIND_THRESHOLD_KPH = 20.0   # below this, wind is irrelevant
 MIN_ADJUST = 0.8            # floor: weather alone never cuts goals by >20%
+
+_GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
+_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
 
 
 def weather_adjustment(wind_kph: float = 0.0, rain_mm: float = 0.0) -> float:
@@ -47,3 +53,66 @@ def fetch_weather_adjustment(
         return weather_adjustment(wind_kph=wind_kph, rain_mm=rain_mm)
     except Exception:
         return 1.0
+
+
+# ---- Open-Meteo (free, no API key) -------------------------------------------
+
+def parse_geocode(payload: Dict) -> Dict[str, object]:
+    """Pull the first match from an Open-Meteo geocoding response."""
+    results = payload.get("results") or []
+    if not results:
+        raise ValueError("no location found")
+    top = results[0]
+    return {
+        "name": top.get("name", ""),
+        "country": top.get("country", ""),
+        "lat": float(top["latitude"]),
+        "lon": float(top["longitude"]),
+    }
+
+
+def parse_open_meteo(payload: Dict) -> Tuple[float, float]:
+    """Pull (wind_kph, rain_mm) from an Open-Meteo current-weather response.
+
+    Open-Meteo reports wind in km/h and precipitation in mm by default, so no unit
+    conversion is needed.
+    """
+    current = payload.get("current")
+    if current is None:
+        raise ValueError("no current weather in response")
+    wind_kph = float(current.get("wind_speed_10m") or 0.0)
+    rain_mm = float(current.get("precipitation") or 0.0)
+    return wind_kph, rain_mm
+
+
+def _http_json(url: str, params: Dict) -> Dict:
+    import requests  # lazy import keeps the engine dependency-free
+
+    resp = requests.get(url, params=params, timeout=10)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def geocode_city(name: str) -> Dict:
+    return _http_json(_GEOCODE_URL, {"name": name, "count": 1})
+
+
+def fetch_open_meteo(lat: float, lon: float) -> Dict:
+    return _http_json(
+        _FORECAST_URL,
+        {"latitude": lat, "longitude": lon, "current": "wind_speed_10m,precipitation"},
+    )
+
+
+def fetch_weather_for_city(
+    city: str,
+    _geocode_fetcher: Callable[[str], Dict] = geocode_city,
+    _weather_fetcher: Callable[[float, float], Dict] = fetch_open_meteo,
+) -> Dict[str, object]:
+    """Geocode ``city`` then fetch its current weather → a single info dict.
+
+    The two fetchers are injectable so composition is unit-testable without network.
+    """
+    loc = parse_geocode(_geocode_fetcher(city))
+    wind_kph, rain_mm = parse_open_meteo(_weather_fetcher(loc["lat"], loc["lon"]))
+    return {**loc, "wind_kph": wind_kph, "rain_mm": rain_mm}

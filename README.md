@@ -30,7 +30,7 @@ Key modelling choices:
 | Need | Source | Cost |
 | --- | --- | --- |
 | Team & player xG (top-5 leagues) | Understat (scrape) | €0 |
-| Weather → λ adjustment | OpenWeatherMap | €0 |
+| Weather → λ adjustment | Open-Meteo (free, no key) | €0 |
 | Offline demo / tests | bundled `SampleDataProvider` | €0 |
 
 > Scraping Understat is fine for personal use but is **not** licensed for
@@ -69,7 +69,8 @@ Then optionally enter bookmaker odds (value flags + blending), kickoff weather, 
 Real match context can nudge the prediction — entered by you, never invented, and
 **bounded** so no single factor dominates (combined multiplier clamped to 0.70–1.30):
 
-- **Weather** — wind/rain lowers both sides' expected goals.
+- **Weather** — wind/rain lowers both sides' expected goals. **Auto-fetch** from
+  **Open-Meteo** (free, no API key) by typing the match city, or enter wind/rain by hand.
 - **Rest days** — a short-rested side scores slightly less.
 - **Key attacker out** — that team scores less.
 - **Key defender out** — the *opponent* scores more.
@@ -213,6 +214,7 @@ Done:
   `docs/specs/2026-06-20-understat-cookie-design.md`
 - **Context factors** (weather, rest, key absences — bounded levers) + **World
   Cup in the app** (Elo model in the dropdown) — `docs/specs/2026-06-20-context-factors-design.md`
+- **Auto weather** via Open-Meteo (free, no API key — fetch wind/rain by city) — `docs/specs/2026-06-21-open-meteo-weather-design.md`
 - **API-Football integration** (official API, free tier, top-5 leagues, goals-based
   team form) — `docs/specs/2026-06-20-apifootball-design.md`
 
