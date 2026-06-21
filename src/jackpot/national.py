@@ -135,11 +135,17 @@ def predict_international(
     away_squad=None,
     market_odds: Optional[Dict[str, float]] = None,
     blend_weight: float = 1.0,
+    home_adjust: float = 1.0,
+    away_adjust: float = 1.0,
 ) -> Dict[str, object]:
     """Full prediction Tab for an international fixture, driven by Elo ratings.
 
     Elo -> expected goals -> the same score matrix and markets as the club model,
     so the output shape and consistency guarantees match ``predict()``.
+
+    ``home_adjust``/``away_adjust`` are bounded context multipliers (weather, rest,
+    key absences) applied to the Elo-derived expected goals — parity with the club
+    path so context factors work for national matches too.
     """
     if market_odds is not None and set(market_odds) != _REQUIRED_MR_KEYS:
         raise ValueError(
@@ -147,6 +153,8 @@ def predict_international(
         )
 
     lam_home, lam_away = elo_to_lambdas(elo_home, elo_away, neutral=neutral)
+    lam_home *= home_adjust
+    lam_away *= away_adjust
     matrix = build_score_matrix(lam_home, lam_away)
 
     raw_mr = mk.match_result(matrix)
